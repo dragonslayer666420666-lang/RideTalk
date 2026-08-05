@@ -1,0 +1,953 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#070b12" />
+  <meta name="color-scheme" content="dark" />
+  <title>RideTalk GPS Voice 100</title>
+
+  <!-- Leaflet map styles: jsDelivr first, unpkg fallback. -->
+  <link
+    id="leafletCss"
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
+    onerror="this.onerror=null;this.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';"
+  />
+
+  <style>
+    :root {
+      --bg:#070b12;
+      --panel:#101827;
+      --panel2:#172235;
+      --line:#293851;
+      --text:#f5f8fc;
+      --muted:#9eacc0;
+      --green:#45e08a;
+      --yellow:#ffd166;
+      --red:#ff5c6c;
+      --blue:#59a9ff;
+      --rgb-duration:34s;
+    }
+
+    * { box-sizing:border-box; }
+    html,body { margin:0; min-height:100%; background:radial-gradient(circle at top,#172640 0,#070b12 38%); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+    body { padding:max(14px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left)); }
+    button,input,select { font:inherit; }
+    button { cursor:pointer; touch-action:manipulation; }
+    .app { width:min(860px,100%); margin:auto; }
+    .topbar { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:14px; }
+    h1 { margin:0; font-size:clamp(1.7rem,7vw,2.5rem); line-height:1; }
+    h2 { margin:0 0 12px; font-size:1.08rem; }
+    h3 { margin:0 0 8px; font-size:.95rem; }
+    p { line-height:1.5; }
+    .muted,.note { color:var(--muted); }
+    .note { margin:-4px 0 12px; font-size:.84rem; }
+    .rgb { color:transparent; background:linear-gradient(90deg,#ff3b5c,#ff9f1c,#ffe66d,#48e08b,#45b8ff,#8f6cff,#ff55d7,#ff3b5c); background-size:400% 100%; -webkit-background-clip:text; background-clip:text; animation:rgb var(--rgb-duration) linear infinite; }
+    @keyframes rgb { to { background-position:400% 50%; } }
+    .pill { min-width:108px; padding:9px 12px; border:1px solid var(--line); border-radius:999px; color:var(--muted); background:#101827e8; text-align:center; font-size:.8rem; font-weight:900; }
+    .pill.good { color:var(--green); border-color:#45e08a88; }
+    .pill.warn { color:var(--yellow); border-color:#ffd16688; }
+    .pill.bad { color:var(--red); border-color:#ff5c6c88; }
+    .card { margin-bottom:14px; padding:16px; border:1px solid var(--line); border-radius:18px; background:#101827f2; box-shadow:0 12px 35px #0005; }
+    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .grid3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+    .full { grid-column:1/-1; }
+    .field { display:grid; gap:6px; }
+    label { color:var(--muted); font-size:.82rem; font-weight:800; }
+    input,select { width:100%; min-height:48px; padding:11px 12px; color:var(--text); border:1px solid var(--line); border-radius:13px; outline:none; background:#0b1220; }
+    input:focus,select:focus { border-color:var(--blue); box-shadow:0 0 0 3px #59a9ff22; }
+    .row { display:flex; flex-wrap:wrap; gap:9px; margin-top:12px; }
+    .btn { min-height:48px; padding:11px 15px; border:0; border-radius:13px; color:#06110c; background:var(--green); font-weight:950; }
+    .btn.secondary { color:var(--text); border:1px solid var(--line); background:var(--panel2); }
+    .btn.warning { color:#201600; background:var(--yellow); }
+    .btn.danger { color:white; background:#a92f40; }
+    .btn:disabled { opacity:.45; cursor:not-allowed; }
+    .status-box { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; padding:12px; border:1px solid var(--line); border-radius:14px; background:#0b1220; }
+    .mode { display:grid; grid-template-columns:1fr 1fr; overflow:hidden; min-width:210px; border:1px solid var(--line); border-radius:12px; }
+    .mode button { min-height:44px; border:0; color:var(--muted); background:transparent; font-weight:900; }
+    .mode button.active { color:#06110c; background:var(--green); }
+    .metric { min-height:68px; padding:10px; border:1px solid var(--line); border-radius:12px; background:#0b1220; text-align:center; }
+    .metric span { display:block; color:var(--muted); font-size:.72rem; }
+    .metric strong { display:block; margin-top:4px; }
+    .ptt { width:100%; min-height:165px; border:3px solid #45e08aaa; border-radius:28px; color:#06110c; background:radial-gradient(circle at 50% 24%,#9bffc4,#45e08a 45%,#20a967); font-size:clamp(1.35rem,6.5vw,2.05rem); font-weight:1000; user-select:none; touch-action:none; }
+    .ptt.active { color:white; border-color:#ff9aa4; background:radial-gradient(circle at 50% 24%,#ff9aa4,#ff5c6c 48%,#ae2d40); transform:translateY(2px); }
+    .ptt.system-off { color:var(--muted); border-color:var(--line); background:#0b1220; }
+    .talk-controls { display:grid; gap:10px; margin-bottom:12px; }
+    .talk-control-row { display:grid; grid-template-columns:minmax(135px,.75fr) 1.6fr; gap:10px; align-items:center; }
+    .talk-control-label strong { display:block; }
+    .talk-control-label span { display:block; margin-top:3px; color:var(--muted); font-size:.75rem; line-height:1.35; }
+    .talk-mode { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); overflow:hidden; border:1px solid var(--line); border-radius:12px; }
+    .talk-mode button { min-height:44px; padding:8px 5px; border:0; color:var(--muted); background:transparent; font-size:.78rem; font-weight:900; }
+    .talk-mode button.active { color:#06110c; background:var(--green); }
+    .voice-meter { height:12px; overflow:hidden; border:1px solid var(--line); border-radius:999px; background:#070d18; }
+    .voice-meter-fill { width:0%; height:100%; background:linear-gradient(90deg,var(--green),var(--yellow),var(--red)); transition:width 70ms linear; }
+    .voice-panel { display:grid; gap:8px; padding:11px; border:1px solid var(--line); border-radius:13px; background:#0b1220; }
+    .voice-status { display:flex; justify-content:space-between; gap:10px; color:var(--muted); font-size:.76rem; }
+    .voice-changer-panel { display:grid; gap:10px; margin-top:2px; padding:12px; border:1px solid #8f6cff66; border-radius:14px; background:linear-gradient(145deg,#15152a,#0b1220); }
+    .voice-preset-status { padding:10px 11px; border:1px solid var(--line); border-radius:12px; color:var(--muted); background:#070d18; font-size:.78rem; line-height:1.45; }
+    .voice-preset-status strong { display:block; margin-bottom:3px; color:var(--text); }
+    .voice-count { color:#bdaeff; font-size:.74rem; font-weight:900; }
+    #map { width:100%; height:min(62vh,540px); min-height:360px; border:1px solid var(--line); border-radius:16px; overflow:hidden; background:#0b1220; }
+    .leaflet-container { font-family:inherit; }
+    .leaflet-popup-content-wrapper,.leaflet-popup-tip { color:var(--text); background:var(--panel); }
+    .map-tools { display:grid; grid-template-columns:1fr auto; gap:9px; margin-bottom:10px; }
+    .search-results,.list { display:grid; gap:8px; margin-top:10px; }
+    .search-result,.list-item { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:12px; color:var(--text); background:#0b1220; text-align:left; }
+    .list-item { display:flex; align-items:center; gap:10px; }
+    .grow { min-width:0; flex:1; }
+    .small { color:var(--muted); font-size:.76rem; line-height:1.4; }
+    .dot { width:10px; height:10px; border-radius:50%; background:#46536a; }
+    .dot.live { background:var(--green); box-shadow:0 0 0 5px #45e08a22; }
+    .emblem-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; margin-top:12px; }
+    .emblem { display:grid; place-items:center; min-height:66px; padding:5px; border:1px solid var(--line); border-radius:12px; color:var(--muted); background:#0b1220; }
+    .emblem.selected { border-color:var(--green); box-shadow:0 0 0 3px #45e08a22; }
+    .emblem-face { display:grid; place-items:center; width:42px; height:42px; border:3px solid white; border-radius:50%; box-shadow:0 4px 12px #0008; font-size:22px; }
+    .map-marker { position:relative; display:grid; place-items:center; width:46px; height:46px; border:3px solid white; border-radius:50%; box-shadow:0 4px 12px #0008; font-size:23px; }
+    .marker-wrap { overflow:visible!important; border:0!important; background:transparent!important; }
+    .marker-label { position:absolute; left:50%; bottom:-18px; transform:translateX(-50%); max-width:110px; padding:2px 6px; border-radius:999px; overflow:hidden; color:white; background:#050811e8; font-size:10px; font-weight:900; text-overflow:ellipsis; white-space:nowrap; }
+    .setting { display:grid; grid-template-columns:1fr minmax(150px,270px); gap:12px; align-items:center; min-height:62px; border-bottom:1px solid #293851aa; }
+    .setting:last-child { border-bottom:0; }
+    .switch { display:grid; grid-template-columns:1fr 1fr; overflow:hidden; border:1px solid var(--line); border-radius:12px; }
+    .switch button { min-height:42px; border:0; color:var(--muted); background:transparent; font-weight:900; }
+    .switch button.active { color:#06110c; background:var(--blue); }
+    .range { display:grid; grid-template-columns:1fr 56px; gap:8px; align-items:center; }
+    input[type=range] { min-height:40px; padding:0; border:0; accent-color:var(--blue); background:transparent; box-shadow:none; }
+    .notice { padding:11px 12px; border:1px solid #ffd16655; border-radius:13px; color:#ffe6a3; background:#ffd16612; font-size:.82rem; line-height:1.45; }
+    .log { max-height:175px; overflow:auto; padding:11px; border:1px solid var(--line); border-radius:13px; color:var(--muted); background:#070d18; font:12px/1.45 ui-monospace,monospace; white-space:pre-wrap; }
+    .diagnostics { display:grid; gap:8px; margin-top:12px; }
+    .diagnostic { display:grid; grid-template-columns:27px 1fr; gap:9px; padding:10px; border:1px solid var(--line); border-radius:12px; background:#0b1220; }
+    .icon { display:grid; place-items:center; width:27px; height:27px; border-radius:50%; color:#06110c; background:var(--green); font-weight:1000; }
+    .diagnostic.fail .icon { color:#201600; background:var(--yellow); }
+    .hidden { display:none!important; }
+    #toasts { position:fixed; right:14px; bottom:max(14px,env(safe-area-inset-bottom)); z-index:9999; display:grid; width:min(360px,calc(100vw - 28px)); gap:8px; pointer-events:none; }
+    .toast { padding:12px 14px; border:1px solid var(--line); border-radius:13px; color:var(--text); background:#101827f8; box-shadow:0 9px 28px #0008; }
+    .toast.warn { border-color:#ffd16688; }
+    .toast.bad { border-color:#ff5c6c99; }
+    audio { width:100%; min-height:48px; }
+    @media(max-width:650px){ .grid,.status-box,.setting,.talk-control-row { grid-template-columns:1fr; } .full{grid-column:auto;} .mode{width:100%;} .grid3{grid-template-columns:repeat(2,minmax(0,1fr));} .emblem-grid{grid-template-columns:repeat(4,minmax(0,1fr));} .map-tools{grid-template-columns:1fr;} }
+    @media(max-width:390px){ .grid3{grid-template-columns:1fr;} .emblem-grid{grid-template-columns:repeat(3,minmax(0,1fr));} }
+    @media(prefers-reduced-motion:reduce){ .rgb{animation:none;} }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <h1 class="rgb">🏍️ RideTalk GPS</h1>
+        <div class="muted" style="margin-top:5px">Voice, live rider locations, waypoints and road alerts</div>
+      </div>
+      <div id="connectionPill" class="pill warn">STARTING</div>
+    </header>
+
+    <section class="card">
+      <h2>Connection and permissions</h2>
+      <div class="status-box">
+        <div>
+          <strong id="networkText">Checking connection…</strong>
+          <div id="networkDetail" class="small" style="margin-top:4px">RideTalk is preparing the map and audio systems.</div>
+        </div>
+        <div class="mode">
+          <button id="onlineMode" class="active" type="button">AUTO ONLINE</button>
+          <button id="offlineMode" type="button">OFFLINE LOCAL</button>
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top:10px">
+        <div class="metric"><span>Microphone</span><strong id="micPermission">NOT CHECKED</strong></div>
+        <div class="metric"><span>Location</span><strong id="locationPermission">NOT CHECKED</strong></div>
+        <div class="metric"><span>Notifications</span><strong id="notificationPermission">NOT CHECKED</strong></div>
+        <div class="metric"><span>Map engine</span><strong id="mapEngine">LOADING</strong></div>
+      </div>
+
+      <div class="row">
+        <button id="permissionBtn" class="btn" type="button">ALLOW MICROPHONE + GPS</button>
+        <button id="notifyBtn" class="btn secondary" type="button">ENABLE NOTIFICATIONS</button>
+        <button id="retryBtn" class="btn secondary" type="button">RETRY SYSTEMS</button>
+      </div>
+
+      <div class="grid" style="margin-top:14px">
+        <div class="field"><label for="riderName">Rider name</label><input id="riderName" maxlength="24" placeholder="Road Captain" /></div>
+        <div class="field"><label for="roomCode">Private group code</label><input id="roomCode" maxlength="32" placeholder="NIGHT-RIDE" autocapitalize="characters" /></div>
+        <div class="field full"><label for="roomPassword">Optional private password</label><input id="roomPassword" type="password" maxlength="64" placeholder="Everyone enters the same password" /></div>
+      </div>
+
+      <div class="row">
+        <button id="connectBtn" class="btn" type="button">CONNECT</button>
+        <button id="copyInviteBtn" class="btn secondary" type="button">COPY INVITE</button>
+      </div>
+    </section>
+
+    <section id="talkCard" class="card hidden">
+      <div class="status-box" style="margin-bottom:12px">
+        <strong id="channelState">CHANNEL READY</strong>
+        <span id="riderCount" class="small">1 rider</span>
+      </div>
+
+      <div class="talk-controls">
+        <div class="talk-control-row">
+          <div class="talk-control-label">
+            <strong>Talk system</strong>
+            <span>Master switch for every transmit mode.</span>
+          </div>
+          <div class="switch" aria-label="Talk system power">
+            <button id="talkOnBtn" class="active" type="button">ON</button>
+            <button id="talkOffBtn" type="button">OFF</button>
+          </div>
+        </div>
+
+        <div class="talk-control-row">
+          <div class="talk-control-label">
+            <strong>Talk mode</strong>
+            <span>Choose tap-toggle or automatic voice activation.</span>
+          </div>
+          <div class="talk-mode" aria-label="Talk mode">
+            <button id="toggleTalkModeBtn" class="active" type="button">TOGGLE</button>
+            <button id="voiceTalkModeBtn" type="button">VOICE</button>
+          </div>
+        </div>
+
+        <div id="voiceActivationPanel" class="voice-panel hidden">
+          <div class="talk-control-row">
+            <div class="talk-control-label">
+              <strong>Voice sensitivity</strong>
+              <span>Higher sensitivity reacts to quieter speech.</span>
+            </div>
+            <div class="range">
+              <input id="voiceSensitivity" type="range" min="1" max="100" value="62" />
+              <strong id="voiceSensitivityText">62%</strong>
+            </div>
+          </div>
+          <div class="voice-meter" aria-label="Microphone voice level">
+            <div id="voiceMeterFill" class="voice-meter-fill"></div>
+          </div>
+          <div class="voice-status">
+            <span id="voiceActivationStatus">Waiting for connection</span>
+            <span>Quiet-release: 0.7 sec</span>
+          </div>
+        </div>
+        <div class="voice-changer-panel">
+          <div class="talk-control-row">
+            <div class="talk-control-label">
+              <strong>Voice changer</strong>
+              <span>Changes your outgoing rider voice. Presets apply live after connecting.</span>
+            </div>
+            <div class="switch" aria-label="Voice changer power">
+              <button id="voiceChangerOnBtn" type="button">ON</button>
+              <button id="voiceChangerOffBtn" class="active" type="button">OFF</button>
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="field">
+              <label for="voiceCategory">Voice category</label>
+              <select id="voiceCategory"></select>
+            </div>
+            <div class="field">
+              <label for="voicePreset">Preset voice</label>
+              <select id="voicePreset"></select>
+            </div>
+          </div>
+
+          <div id="voicePresetStatus" class="voice-preset-status">
+            <strong>Voice changer off</strong>
+            Turn it on to use one of the 100 categorized voice presets.
+          </div>
+          <div id="voicePresetCount" class="voice-count">100 presets • 10 categories</div>
+        </div>
+      </div>
+
+      <button id="pttBtn" class="ptt" disabled type="button">CONNECT TO USE TALK</button>
+      <p class="note" style="margin:10px 0 0;text-align:center">Set everything up while stopped. Never handle the phone while riding.</p>
+    </section>
+
+    <section class="card">
+      <h2>Live GPS map</h2>
+      <p class="note">Your phone can show local GPS without joining a group. Live rider sharing needs a connection.</p>
+      <div class="grid3">
+        <div class="metric"><span>GPS</span><strong id="gpsStatus">OFF</strong></div>
+        <div class="metric"><span>Your speed</span><strong id="speedText">-- mph</strong></div>
+        <div class="metric"><span>Accuracy</span><strong id="accuracyText">--</strong></div>
+        <div class="metric"><span>Riders with GPS</span><strong id="gpsRiderCount">0</strong></div>
+        <div class="metric"><span>Road alerts</span><strong id="alertCount">0</strong></div>
+        <div class="metric"><span>Waypoint</span><strong id="waypointText">NONE</strong></div>
+      </div>
+
+      <div class="map-tools" style="margin-top:12px">
+        <input id="placeSearch" placeholder="Search city, town, ZIP or place" maxlength="80" />
+        <button id="searchBtn" class="btn secondary" type="button">SEARCH</button>
+      </div>
+      <div id="searchResults" class="search-results"></div>
+      <div id="map"><div style="display:grid;place-items:center;height:100%;padding:24px;text-align:center;color:var(--muted)">Loading map engine…</div></div>
+      <div class="row">
+        <button id="gpsBtn" class="btn" type="button">START GPS</button>
+        <button id="centerBtn" class="btn secondary" type="button">CENTER ON ME</button>
+        <button id="fitBtn" class="btn secondary" type="button">SHOW ALL RIDERS</button>
+        <button id="shareWaypointBtn" class="btn secondary" type="button">SHARE WAYPOINT</button>
+        <button id="clearWaypointBtn" class="btn secondary" type="button">CLEAR WAYPOINT</button>
+      </div>
+      <p class="note" style="margin:10px 0 0">Tap the map while stopped to place a waypoint.</p>
+    </section>
+
+    <section class="card">
+      <h2>Road alerts</h2>
+      <div class="field"><label for="hazardNote">Optional note</label><input id="hazardNote" maxlength="80" placeholder="Left lane blocked" /></div>
+      <div class="row">
+        <button id="roadblockBtn" class="btn warning" type="button">🛑 ROADBLOCK</button>
+        <button id="wreckBtn" class="btn danger" type="button">💥 CAR WRECK</button>
+      </div>
+      <div id="hazardList" class="list"></div>
+    </section>
+
+    <section class="card">
+      <h2>Rider emblem</h2>
+      <p class="note">The number system creates 1,000,000 combinations without loading a million image files.</p>
+      <div class="grid">
+        <div class="field"><label for="emblemNumber">Emblem number 1–1,000,000</label><input id="emblemNumber" type="number" min="1" max="1000000" value="1" /></div>
+        <div class="field"><label>&nbsp;</label><div class="row" style="margin:0"><button id="goEmblemBtn" class="btn secondary" type="button">GO</button><button id="randomEmblemBtn" class="btn secondary" type="button">RANDOM</button></div></div>
+      </div>
+      <div id="selectedEmblemText" class="muted" style="margin-top:10px">Selected emblem #1</div>
+      <div id="emblemGrid" class="emblem-grid"></div>
+      <div class="row">
+        <button id="prevEmblems" class="btn secondary" type="button">PREVIOUS</button>
+        <button id="nextEmblems" class="btn secondary" type="button">NEXT</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Audio, wind filtering and RGB</h2>
+      <div class="setting">
+        <div><strong>Incoming voice side</strong><div class="small">Places connected rider voices in the selected ear.</div></div>
+        <div class="switch"><button id="leftEar" class="active" type="button">LEFT</button><button id="rightEar" type="button">RIGHT</button></div>
+      </div>
+      <div class="setting">
+        <div><strong>Wind and traffic filtering</strong><div class="small">Uses browser cleanup plus speech-focused filters.</div></div>
+        <select id="noiseMode"><option value="off">Off</option><option value="normal" selected>Normal</option><option value="strong">Strong</option></select>
+      </div>
+      <div class="setting">
+        <div><strong>Voice volume</strong></div>
+        <div class="range"><input id="voiceVolume" type="range" min="0" max="150" value="100" /><strong id="voiceVolumeText">100%</strong></div>
+      </div>
+      <div class="setting">
+        <div><strong>Music during speech</strong><div class="small">Phone music fades down while a rider talks.</div></div>
+        <div class="range"><input id="duckVolume" type="range" min="0" max="60" value="8" /><strong id="duckVolumeText">8%</strong></div>
+      </div>
+      <div class="setting">
+        <div><strong>RGB lettering speed</strong></div>
+        <div class="range"><input id="rgbSpeed" type="range" min="1" max="100" value="10" /><strong id="rgbSpeedText">10%</strong></div>
+      </div>
+      <div class="row"><button id="testEarBtn" class="btn secondary" type="button">TEST VOICE SIDE</button></div>
+    </section>
+
+    <section class="card">
+      <h2 class="rgb">Music</h2>
+      <div class="field"><label for="musicFile">Choose a music file from this phone</label><input id="musicFile" type="file" accept="audio/*" /></div>
+      <audio id="musicPlayer" controls loop playsinline style="margin-top:10px"></audio>
+      <div class="row">
+        <button id="pandoraBtn" class="btn secondary" type="button">OPEN PANDORA</button>
+        <button id="youtubeMusicBtn" class="btn secondary" type="button">OPEN YOUTUBE MUSIC</button>
+      </div>
+    </section>
+
+    <section id="ridersCard" class="card hidden">
+      <h2>Connected riders</h2>
+      <div id="riderList" class="list"></div>
+    </section>
+
+    <section class="card">
+      <div class="notice">Live location is precise personal information. Only share a group code and password with riders you trust. Stop GPS sharing when the ride ends.</div>
+      <h2 style="margin-top:16px">Diagnostics</h2>
+      <div id="diagnostics" class="diagnostics"></div>
+      <div class="row">
+        <button id="diagnosticBtn" class="btn secondary" type="button">RUN SYSTEM CHECK</button>
+        <button id="downloadReportBtn" class="btn secondary" type="button">DOWNLOAD REPORT</button>
+      </div>
+      <h2 style="margin-top:16px">Connection log</h2>
+      <div id="log" class="log">Ready.</div>
+    </section>
+  </main>
+  <div id="toasts" aria-live="polite"></div>
+
+  <script type="module">
+    const $ = id => document.getElementById(id);
+    const ui = Object.fromEntries([
+      'connectionPill','networkText','networkDetail','onlineMode','offlineMode','micPermission','locationPermission','notificationPermission','mapEngine','permissionBtn','notifyBtn','retryBtn','riderName','roomCode','roomPassword','connectBtn','copyInviteBtn','talkCard','channelState','riderCount','talkOnBtn','talkOffBtn','toggleTalkModeBtn','voiceTalkModeBtn','voiceActivationPanel','voiceSensitivity','voiceSensitivityText','voiceMeterFill','voiceActivationStatus','voiceChangerOnBtn','voiceChangerOffBtn','voiceCategory','voicePreset','voicePresetStatus','voicePresetCount','pttBtn','gpsStatus','speedText','accuracyText','gpsRiderCount','alertCount','waypointText','placeSearch','searchBtn','searchResults','gpsBtn','centerBtn','fitBtn','shareWaypointBtn','clearWaypointBtn','hazardNote','roadblockBtn','wreckBtn','hazardList','emblemNumber','goEmblemBtn','randomEmblemBtn','selectedEmblemText','emblemGrid','prevEmblems','nextEmblems','leftEar','rightEar','noiseMode','voiceVolume','voiceVolumeText','duckVolume','duckVolumeText','rgbSpeed','rgbSpeedText','testEarBtn','musicFile','musicPlayer','pandoraBtn','youtubeMusicBtn','ridersCard','riderList','diagnostics','diagnosticBtn','downloadReportBtn','log','toasts'
+    ].map(id => [id,$(id)]));
+
+    const APP_ID = 'ridetalk-gps-one-file-v1';
+    const MAX_RIDERS = 20;
+    const EMBLEM_COUNT = 1_000_000;
+    const EMBLEMS_PER_PAGE = 24;
+    const HAZARD_LIFETIME = 2 * 60 * 60 * 1000;
+
+
+    const VOICE_CATEGORY_DEFS = [
+      {
+        category:'Natural',
+        names:['Clean','Warm','Clear','Studio','Broadcast','Soft','Crisp','Smooth','Presence','Loud'],
+        description:'Natural speech shaping with light studio-style tone control.',
+        build:i=>({f1Type:'lowshelf',f1Freq:180+i*12,f1Gain:1+i*.35,f2Type:'peaking',f2Freq:1800+i*115,f2Q:.75,f2Gain:.5+i*.3,drive:i*.7,dry:1,wet:0,delay:0,feedback:0,ringRate:0,ringDepth:0,output:1+i*.012})
+      },
+      {
+        category:'Radio',
+        names:['Walkie-Talkie','Helmet Radio','Police Band','AM Radio','FM Radio','Dispatch','Intercom','Emergency','Vintage Radio','Narrowband'],
+        description:'Narrow communication-radio tone for helmet and dispatch effects.',
+        build:i=>({f1Type:'highpass',f1Freq:260+i*34,f1Gain:0,f2Type:'lowpass',f2Freq:4200-i*175,f2Q:1.1,drive:7+i*2.2,dry:.94,wet:.06,delay:.008+i*.001,feedback:.02,ringRate:0,ringDepth:0,output:1.05})
+      },
+      {
+        category:'Robot',
+        names:['Light Robot','Chrome Bot','Servo Voice','Droid','Mech','Cyber Robot','Heavy Robot','Factory Bot','Battle Robot','Glitch Bot'],
+        description:'Mechanical tremolo, metallic filtering and short digital-style delay.',
+        build:i=>({f1Type:'bandpass',f1Freq:900+i*105,f1Q:1.2+i*.12,f2Type:'peaking',f2Freq:2400+i*90,f2Q:2,f2Gain:3+i*.3,drive:8+i*2.5,dry:.72-i*.018,wet:.28+i*.018,delay:.015+i*.003,feedback:.08+i*.025,ringRate:18+i*6,ringDepth:.22+i*.045,output:1.08})
+      },
+      {
+        category:'Deep',
+        names:['Low Warm','Deep Rider','Bass Voice','Dark Voice','Cave Voice','Thunder Voice','Heavy Bass','Giant Voice','Underworld','Deepest'],
+        description:'Bass emphasis, darker high-frequency rolloff and subtle room echo.',
+        build:i=>({f1Type:'lowshelf',f1Freq:220+i*8,f1Gain:4+i*.75,f2Type:'lowpass',f2Freq:6200-i*270,f2Q:.8,drive:2+i*1.3,dry:.9-i*.012,wet:.1+i*.012,delay:.025+i*.006,feedback:.05+i*.025,ringRate:3+i*.75,ringDepth:.03+i*.018,output:1.02})
+      },
+      {
+        category:'Bright',
+        names:['Bright Clean','Airy','Sharp','Sparkle','Thin','High Presence','Megaphone','Telephone','Tiny Radio','Glass Voice'],
+        description:'Brighter speech, reduced bass and stronger upper-mid presence.',
+        build:i=>({f1Type:'highpass',f1Freq:120+i*42,f1Q:.8,f2Type:'highshelf',f2Freq:2100+i*120,f2Gain:2+i*.85,drive:1+i*1.25,dry:.96,wet:.04,delay:.006+i*.0015,feedback:.01+i*.01,ringRate:0,ringDepth:0,output:1.02})
+      },
+      {
+        category:'Monster',
+        names:['Growl','Beast','Ogre','Cave Monster','Swamp Beast','Dragon','Titan','Night Creature','Ancient Monster','Colossus'],
+        description:'Dark filtering, grit, heavy resonance and creature-like vibration.',
+        build:i=>({f1Type:'lowshelf',f1Freq:260,f1Gain:5+i*.9,f2Type:'lowpass',f2Freq:5200-i*250,f2Q:1.1+i*.07,drive:12+i*4.2,dry:.78-i*.02,wet:.22+i*.02,delay:.035+i*.008,feedback:.12+i*.035,ringRate:5+i*1.8,ringDepth:.09+i*.035,output:1.02})
+      },
+      {
+        category:'Alien',
+        names:['Space Voice','Alien Scout','Martian','Cosmic','UFO Signal','Nebula','Moon Echo','Star Creature','Alien Royal','Deep Space'],
+        description:'Resonant filters, unusual modulation and space-like echoes.',
+        build:i=>({f1Type:'bandpass',f1Freq:650+i*145,f1Q:1.1+i*.15,f2Type:'peaking',f2Freq:2600+i*130,f2Q:2.2,f2Gain:2+i*.5,drive:5+i*2,dry:.66-i*.015,wet:.34+i*.015,delay:.045+i*.012,feedback:.18+i*.035,ringRate:12+i*8,ringDepth:.16+i*.052,output:1.05})
+      },
+      {
+        category:'Cartoon',
+        names:['Comic Voice','Squeaky Filter','Tiny Character','Goofy','Bouncy','Toy Voice','Chipmunk Tone','Animated Hero','Funny Sidekick','Super Cartoon'],
+        description:'Light, bright and bouncy tonal effects for playful character voices.',
+        build:i=>({f1Type:'highpass',f1Freq:190+i*48,f1Q:.7,f2Type:'peaking',f2Freq:2800+i*160,f2Q:1.4,f2Gain:3+i*.7,drive:1+i*.85,dry:.88-i*.01,wet:.12+i*.01,delay:.012+i*.003,feedback:.03+i*.018,ringRate:7+i*2.6,ringDepth:.03+i*.026,output:1.04})
+      },
+      {
+        category:'Sci-Fi',
+        names:['Helmet AI','Spacesuit','Cyborg','Hologram','Portal','Time Warp','Laser Comm','Starship','Quantum','Galactic'],
+        description:'Futuristic communication filters, modulation and controlled echo.',
+        build:i=>({f1Type:'highpass',f1Freq:180+i*28,f1Q:1,f2Type:'peaking',f2Freq:1400+i*190,f2Q:1.5+i*.1,f2Gain:2+i*.5,drive:5+i*2.4,dry:.74-i*.014,wet:.26+i*.014,delay:.025+i*.008,feedback:.1+i*.035,ringRate:14+i*5.5,ringDepth:.1+i*.04,output:1.05})
+      },
+      {
+        category:'Distorted',
+        names:['Light Crunch','Grit','Overdrive','Static','Broken Speaker','Digital Crunch','Worn Microphone','Harsh','Chaos','Maximum Distortion'],
+        description:'Increasing levels of crunch, saturation and damaged-speaker tone.',
+        build:i=>({f1Type:'highpass',f1Freq:90+i*24,f1Q:.8,f2Type:'lowpass',f2Freq:7200-i*350,f2Q:1,drive:16+i*8,dry:.92-i*.035,wet:.08+i*.035,delay:.008+i*.004,feedback:.02+i*.03,ringRate:i<4?0:8+i*3,ringDepth:i<4?0:.04+i*.035,output:.92})
+      }
+    ];
+
+    const VOICE_PRESETS = VOICE_CATEGORY_DEFS.flatMap((group,categoryIndex)=>
+      group.names.map((name,presetIndex)=>({
+        id:categoryIndex*10+presetIndex+1,
+        category:group.category,
+        name,
+        description:group.description,
+        ...group.build(presetIndex)
+      }))
+    );
+
+    const NEUTRAL_VOICE_PRESET = {
+      id:0,category:'Off',name:'Original voice',description:'Voice changer is bypassed.',
+      f1Type:'allpass',f1Freq:1000,f1Q:.7,f1Gain:0,
+      f2Type:'allpass',f2Freq:1000,f2Q:.7,f2Gain:0,
+      drive:0,dry:1,wet:0,delay:0,feedback:0,ringRate:0,ringDepth:0,output:1
+    };
+
+    let mode = localStorage.getItem('ridetalkMode') === 'offline' ? 'offline' : 'online';
+    let room = null;
+    let joined = false;
+    let joinRoomFactory = null;
+    let rawMicStream = null;
+    let localStream = null;
+    let localTrack = null;
+    let audioContext = null;
+    let micNodes = null;
+    let isTalking = false;
+    let talkSource = null;
+    let talkEnabled = localStorage.getItem('ridetalkTalkEnabled') !== 'off';
+    let talkMode = ['toggle','voice'].includes(localStorage.getItem('ridetalkTalkMode'))
+      ? localStorage.getItem('ridetalkTalkMode')
+      : 'toggle';
+    let voiceActivationFrame = null;
+    let voiceReleaseTimer = null;
+    let voiceMeterData = null;
+    let voiceChangerEnabled = localStorage.getItem('ridetalkVoiceChanger') === 'on';
+    let selectedVoicePreset = clamp(Number(localStorage.getItem('ridetalkVoicePreset')) || 1,1,VOICE_PRESETS.length);
+    let incomingSide = localStorage.getItem('ridetalkEar') === 'right' ? 'right' : 'left';
+    let map = null;
+    let tileLayer = null;
+    let leafletReady = false;
+    let gpsWatch = null;
+    let gpsSharing = false;
+    let localLocation = null;
+    let previousLocation = null;
+    let selectedEmblem = clamp(Number(localStorage.getItem('ridetalkEmblem')) || 1,1,EMBLEM_COUNT);
+    let emblemPage = Math.floor((selectedEmblem - 1) / EMBLEMS_PER_PAGE);
+    let localWaypoint = null;
+    let localWaypointMarker = null;
+    let groupWaypoint = null;
+    let groupWaypointMarker = null;
+    let profileAction,talkAction,geoAction,hazardAction,waypointAction;
+    let musicGraph = null;
+    let remoteTalking = 0;
+    let lastDiagnostics = [];
+
+    const peers = new Map();
+    const riderMarkers = new Map();
+    const peerAudio = new Map();
+    const hazards = new Map();
+    const hazardMarkers = new Map();
+
+    function clamp(value,min,max){ return Math.min(max,Math.max(min,value)); }
+    function escapeHtml(value){ return String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
+    function safeName(value){ return String(value||'').trim().replace(/\s+/g,' ').slice(0,24); }
+    function cleanRoom(value){ return String(value||'').trim().toUpperCase().replace(/[^A-Z0-9_-]/g,'-').replace(/-+/g,'-').slice(0,32); }
+    function nowTime(){ return new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+    function log(message){ ui.log.textContent = `[${nowTime()}] ${message}\n${ui.log.textContent}`.slice(0,10000); }
+    function toast(message,tone=''){ const e=document.createElement('div'); e.className=`toast ${tone}`; e.textContent=message; ui.toasts.append(e); setTimeout(()=>e.remove(),5000); }
+    function setPill(text,tone='warn'){ ui.connectionPill.textContent=text; ui.connectionPill.className=`pill ${tone}`; }
+    function formatSpeed(v){ return Number.isFinite(v) ? `${Math.round(v)} mph` : '-- mph'; }
+    function formatDistance(miles){ if(!Number.isFinite(miles))return '--'; return miles<.1?`${Math.round(miles*5280)} ft`:miles<10?`${miles.toFixed(1)} mi`:`${Math.round(miles)} mi`; }
+    function haversine(a,b){ if(!a||!b)return NaN; const r=3958.7613,toRad=d=>d*Math.PI/180,dLat=toRad(b.lat-a.lat),dLng=toRad(b.lng-a.lng); const h=Math.sin(dLat/2)**2+Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLng/2)**2; return 2*r*Math.asin(Math.sqrt(h)); }
+
+    function loadScript(sources){
+      return new Promise((resolve,reject)=>{
+        let index=0;
+        const tryNext=()=>{
+          if(index>=sources.length){ reject(new Error('Every map source failed to load.')); return; }
+          const script=document.createElement('script');
+          script.src=sources[index++];
+          script.async=true;
+          script.onload=()=>resolve(script.src);
+          script.onerror=()=>{ script.remove(); tryNext(); };
+          document.head.append(script);
+        };
+        tryNext();
+      });
+    }
+
+    async function loadLeaflet(){
+      if(window.L){ leafletReady=true; return; }
+      try{
+        const source=await loadScript([
+          'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js',
+          'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+        ]);
+        leafletReady=Boolean(window.L);
+        log(`Leaflet loaded from ${new URL(source).hostname}.`);
+      }catch(error){
+        leafletReady=false;
+        log(`Map engine failed: ${error.message}`);
+      }
+    }
+
+    function initMap(){
+      ui.mapEngine.textContent=leafletReady?'READY':'FAILED';
+      ui.mapEngine.style.color=leafletReady?'var(--green)':'var(--red)';
+      if(!leafletReady){
+        $('map').innerHTML='<div style="display:grid;place-items:center;height:100%;padding:24px;text-align:center;color:var(--muted)"><div><strong style="color:var(--yellow)">Map engine did not load.</strong><br>Check mobile data, Private DNS or an ad blocker, then press RETRY SYSTEMS.</div></div>';
+        return;
+      }
+      map=L.map('map',{zoomControl:true,preferCanvas:true}).setView([39.5,-98.35],4);
+      tileLayer=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+      tileLayer.on('tileerror',()=>log('A map tile failed and will retry when the map moves.'));
+      map.on('click',event=>{
+        if(Number.isFinite(localLocation?.speedMph)&&localLocation.speedMph>5){ toast('Stop before changing the waypoint.','warn'); return; }
+        setWaypoint(event.latlng.lat,event.latlng.lng,'Map waypoint');
+      });
+    }
+
+    const SYMBOLS=['🏍️','🛵','🏁','⚡','🔥','🦅','🐺','🐉','☠️','👑','🛡️','⚙️','🔧','⛓️','🧭','🗺️','🚦','🛣️','🌙','☀️','🌩️','🌪️','🏔️','🌲','🌵','🌊','🧊','💎','⭐','🌟','💥','🎯','🚀','🛸','👽','🤖','👻','🦇','🦂','🐍','🐅','🦁','🐻','🐂','🦬','🦈','🐙','🦖','🦍','🦊'];
+    function emblemData(id){ const n=clamp(Math.floor(Number(id)||1),1,EMBLEM_COUNT)-1; return {id:n+1,symbol:SYMBOLS[n%SYMBOLS.length],hue:(n*137.508)%360,radius:['50%','20%','35% 15%','50% 50% 20% 20%'][Math.floor(n/5000)%4]}; }
+    function emblemHtml(id,size=42,label=''){ const e=emblemData(id); return `<div class="map-marker" style="width:${size}px;height:${size}px;border-radius:${e.radius};background:hsl(${e.hue} 72% 46%);font-size:${Math.round(size*.5)}px">${e.symbol}${label?`<span class="marker-label">${escapeHtml(label)}</span>`:''}</div>`; }
+    function riderIcon(id,label){ return L.divIcon({className:'marker-wrap',html:emblemHtml(id,46,label),iconSize:[46,66],iconAnchor:[23,48],popupAnchor:[0,-43]}); }
+    function hazardIcon(type){ const symbol=type==='roadblock'?'🛑':'💥'; return L.divIcon({className:'marker-wrap',html:`<div class="map-marker" style="background:#b52d42">${symbol}</div>`,iconSize:[46,46],iconAnchor:[23,23]}); }
+
+    function renderEmblems(){
+      const maxPage=Math.ceil(EMBLEM_COUNT/EMBLEMS_PER_PAGE)-1;
+      emblemPage=clamp(emblemPage,0,maxPage);
+      ui.emblemGrid.replaceChildren();
+      const start=emblemPage*EMBLEMS_PER_PAGE+1;
+      for(let i=0;i<EMBLEMS_PER_PAGE;i++){
+        const id=start+i;if(id>EMBLEM_COUNT)break;
+        const b=document.createElement('button');b.type='button';b.className=`emblem ${id===selectedEmblem?'selected':''}`;
+        const e=emblemData(id);b.innerHTML=`<span class="emblem-face" style="border-radius:${e.radius};background:hsl(${e.hue} 72% 46%)">${e.symbol}</span><small>#${id.toLocaleString()}</small>`;
+        b.onclick=()=>selectEmblem(id);ui.emblemGrid.append(b);
+      }
+      ui.prevEmblems.disabled=emblemPage===0;ui.nextEmblems.disabled=emblemPage===maxPage;
+    }
+    function selectEmblem(id){ selectedEmblem=clamp(Math.floor(Number(id)||1),1,EMBLEM_COUNT); emblemPage=Math.floor((selectedEmblem-1)/EMBLEMS_PER_PAGE); localStorage.setItem('ridetalkEmblem',selectedEmblem); ui.emblemNumber.value=selectedEmblem; ui.selectedEmblemText.innerHTML=`Selected emblem #${selectedEmblem.toLocaleString()} &nbsp; ${emblemHtml(selectedEmblem,34)}`; renderEmblems(); updateLocalMarker(); renderRiders(); profileAction?.send({name:safeName(ui.riderName.value),emblemId:selectedEmblem}).catch(()=>{}); }
+
+    async function permissionState(name){ try{ return (await navigator.permissions.query({name})).state; }catch{return 'prompt';} }
+    async function updatePermissions(){
+      const mic=await permissionState('microphone'); const loc=await permissionState('geolocation'); const not=('Notification'in window)?Notification.permission:'unsupported';
+      ui.micPermission.textContent=mic.toUpperCase();ui.locationPermission.textContent=loc.toUpperCase();ui.notificationPermission.textContent=not.toUpperCase();
+      ui.micPermission.style.color=mic==='granted'?'var(--green)':mic==='denied'?'var(--red)':'var(--yellow)';
+      ui.locationPermission.style.color=loc==='granted'?'var(--green)':loc==='denied'?'var(--red)':'var(--yellow)';
+      ui.notificationPermission.style.color=not==='granted'?'var(--green)':not==='denied'?'var(--red)':'var(--yellow)';
+    }
+    async function requestPermissions(){
+      if(!window.isSecureContext){ toast('Open the HTTPS GitHub Pages address first.','bad');return; }
+      ui.permissionBtn.disabled=true;
+      try{
+        const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});stream.getTracks().forEach(t=>t.stop());toast('Microphone permission is ready.');
+        await new Promise(resolve=>navigator.geolocation.getCurrentPosition(p=>{onLocation(p);toast('Location permission is ready.');resolve();},e=>{toast(`Location permission: ${e.message}`,'warn');resolve();},{enableHighAccuracy:false,timeout:12000,maximumAge:30000}));
+      }catch(error){ toast(`Permission error: ${error.message}`,'bad');log(`Permission error: ${error.message}`); }
+      finally{ui.permissionBtn.disabled=false;updatePermissions();}
+    }
+    async function enableNotifications(){ if(!('Notification'in window)){toast('Notifications are not supported here.','warn');return;} const result=await Notification.requestPermission();toast(result==='granted'?'Notifications enabled.':'Notifications were not enabled.',result==='granted'?'':'warn');updatePermissions(); }
+
+    function ensureAudio(){ const AudioContextClass=window.AudioContext||window.webkitAudioContext; if(!AudioContextClass)throw new Error('Browser audio is unavailable.'); if(!audioContext)audioContext=new AudioContextClass({latencyHint:'interactive'}); if(audioContext.state==='suspended')audioContext.resume().catch(()=>{}); return audioContext; }
+
+
+    function distortionCurve(amount=0){
+      const samples=2048,curve=new Float32Array(samples),k=Math.max(0,Number(amount)||0);
+      for(let i=0;i<samples;i++){
+        const x=i*2/samples-1;
+        curve[i]=k<.01?x:((3+k)*x*20*Math.PI/180)/(Math.PI+k*Math.abs(x));
+      }
+      return curve;
+    }
+
+    function currentVoicePreset(){
+      return VOICE_PRESETS.find(preset=>preset.id===selectedVoicePreset)||VOICE_PRESETS[0];
+    }
+
+    function fillVoiceCategories(){
+      if(ui.voiceCategory.options.length===0){
+        for(const group of VOICE_CATEGORY_DEFS)ui.voiceCategory.add(new Option(group.category,group.category));
+      }
+      const preset=currentVoicePreset();
+      ui.voiceCategory.value=preset.category;
+      fillVoicePresets(preset.category,preset.id);
+      refreshVoiceChangerUi();
+    }
+
+    function fillVoicePresets(category,preferredId=null){
+      const presets=VOICE_PRESETS.filter(preset=>preset.category===category);
+      ui.voicePreset.replaceChildren();
+      for(const preset of presets)ui.voicePreset.add(new Option(`${String(preset.id).padStart(3,'0')} — ${preset.name}`,String(preset.id)));
+      const available=presets.some(preset=>preset.id===Number(preferredId));
+      selectedVoicePreset=available?Number(preferredId):presets[0]?.id||1;
+      ui.voicePreset.value=String(selectedVoicePreset);
+    }
+
+    function refreshVoiceChangerUi(){
+      const preset=currentVoicePreset();
+      ui.voiceChangerOnBtn.classList.toggle('active',voiceChangerEnabled);
+      ui.voiceChangerOffBtn.classList.toggle('active',!voiceChangerEnabled);
+      ui.voiceCategory.disabled=!voiceChangerEnabled;
+      ui.voicePreset.disabled=!voiceChangerEnabled;
+      ui.voicePresetCount.textContent=`${VOICE_PRESETS.length} presets • ${VOICE_CATEGORY_DEFS.length} categories • selected #${preset.id}`;
+      ui.voicePresetStatus.innerHTML=voiceChangerEnabled
+        ? `<strong>${escapeHtml(preset.category)} — ${escapeHtml(preset.name)}</strong>${escapeHtml(preset.description)} Outgoing voice only.`
+        : '<strong>Voice changer off</strong>Your original cleaned microphone voice is being used.';
+    }
+
+    function setAudioParam(param,value,time=.04){
+      if(!param)return;
+      const ctx=ensureAudio();
+      param.cancelScheduledValues(ctx.currentTime);
+      param.setTargetAtTime(Number(value)||0,ctx.currentTime,time);
+    }
+
+    function applyVoicePreset(){
+      const chosen=currentVoicePreset();
+      const preset=voiceChangerEnabled?chosen:NEUTRAL_VOICE_PRESET;
+      refreshVoiceChangerUi();
+      if(!micNodes)return;
+
+      micNodes.voiceFilter1.type=preset.f1Type||'allpass';
+      setAudioParam(micNodes.voiceFilter1.frequency,preset.f1Freq||1000);
+      setAudioParam(micNodes.voiceFilter1.Q,preset.f1Q||.7);
+      setAudioParam(micNodes.voiceFilter1.gain,preset.f1Gain||0);
+
+      micNodes.voiceFilter2.type=preset.f2Type||'allpass';
+      setAudioParam(micNodes.voiceFilter2.frequency,preset.f2Freq||1000);
+      setAudioParam(micNodes.voiceFilter2.Q,preset.f2Q||.7);
+      setAudioParam(micNodes.voiceFilter2.gain,preset.f2Gain||0);
+
+      micNodes.distortion.curve=distortionCurve(preset.drive||0);
+      micNodes.distortion.oversample='4x';
+      setAudioParam(micNodes.dryGain.gain,clamp(preset.dry??1,0,1.2));
+      setAudioParam(micNodes.wetGain.gain,clamp(preset.wet??0,0,1.2));
+      setAudioParam(micNodes.delay.delayTime,clamp(preset.delay??0,0,.45));
+      setAudioParam(micNodes.feedback.gain,clamp(preset.feedback??0,0,.68));
+      setAudioParam(micNodes.modOsc.frequency,clamp(preset.ringRate??0,.01,120));
+      const depth=clamp(preset.ringDepth??0,0,.9);
+      setAudioParam(micNodes.ringGain.gain,1-depth/2);
+      setAudioParam(micNodes.modDepth.gain,depth/2);
+      setAudioParam(micNodes.gain.gain,clamp(preset.output??1,.55,1.4));
+      log(`Voice preset ${voiceChangerEnabled?'applied':'bypassed'}: #${chosen.id} ${chosen.category} / ${chosen.name}.`);
+    }
+
+    function setVoiceChangerEnabled(enabled){
+      voiceChangerEnabled=Boolean(enabled);
+      localStorage.setItem('ridetalkVoiceChanger',voiceChangerEnabled?'on':'off');
+      applyVoicePreset();
+      toast(`Voice changer ${voiceChangerEnabled?'on':'off'}.`);
+    }
+
+    function selectVoiceCategory(category){
+      const group=VOICE_CATEGORY_DEFS.find(item=>item.category===category)||VOICE_CATEGORY_DEFS[0];
+      fillVoicePresets(group.category);
+      localStorage.setItem('ridetalkVoicePreset',String(selectedVoicePreset));
+      applyVoicePreset();
+    }
+
+    function selectVoicePreset(id){
+      selectedVoicePreset=clamp(Number(id)||1,1,VOICE_PRESETS.length);
+      const preset=currentVoicePreset();
+      ui.voiceCategory.value=preset.category;
+      if(![...ui.voicePreset.options].some(option=>Number(option.value)===selectedVoicePreset))fillVoicePresets(preset.category,selectedVoicePreset);
+      ui.voicePreset.value=String(selectedVoicePreset);
+      localStorage.setItem('ridetalkVoicePreset',String(selectedVoicePreset));
+      applyVoicePreset();
+    }
+    async function createMicrophone(){
+      const ctx=ensureAudio(); const supported=navigator.mediaDevices.getSupportedConstraints(); const strong=ui.noiseMode.value==='strong',off=ui.noiseMode.value==='off';
+      const constraints={channelCount:{ideal:1},sampleRate:{ideal:48000}};
+      if(supported.echoCancellation)constraints.echoCancellation=!off;if(supported.noiseSuppression)constraints.noiseSuppression=!off;if(supported.autoGainControl)constraints.autoGainControl=!off;
+      rawMicStream=await navigator.mediaDevices.getUserMedia({audio:constraints,video:false});
+      const source=ctx.createMediaStreamSource(rawMicStream),hp=ctx.createBiquadFilter(),lp=ctx.createBiquadFilter(),voiceFilter1=ctx.createBiquadFilter(),voiceFilter2=ctx.createBiquadFilter(),ringGain=ctx.createGain(),distortion=ctx.createWaveShaper(),dryGain=ctx.createGain(),delay=ctx.createDelay(.5),feedback=ctx.createGain(),wetGain=ctx.createGain(),comp=ctx.createDynamicsCompressor(),gain=ctx.createGain(),dest=ctx.createMediaStreamDestination();
+      const modOsc=ctx.createOscillator(),modDepth=ctx.createGain();
+      hp.type='highpass';hp.frequency.value=strong?190:off?45:115;lp.type='lowpass';lp.frequency.value=strong?6500:off?12000:8200;comp.threshold.value=strong?-42:-34;comp.ratio.value=strong?5.5:3.5;gain.gain.value=strong?1.12:1.03;
+      const analyser=ctx.createAnalyser();analyser.fftSize=1024;analyser.smoothingTimeConstant=.25;
+      modOsc.type='sine';modOsc.frequency.value=.01;modDepth.gain.value=0;modOsc.connect(modDepth);modDepth.connect(ringGain.gain);modOsc.start();
+      source.connect(hp);source.connect(analyser);hp.connect(lp);lp.connect(voiceFilter1);voiceFilter1.connect(voiceFilter2);voiceFilter2.connect(ringGain);ringGain.connect(distortion);distortion.connect(dryGain);distortion.connect(delay);delay.connect(wetGain);delay.connect(feedback);feedback.connect(delay);dryGain.connect(comp);wetGain.connect(comp);comp.connect(gain);gain.connect(dest);
+      micNodes={source,hp,lp,voiceFilter1,voiceFilter2,ringGain,distortion,dryGain,delay,feedback,wetGain,comp,gain,dest,analyser,modOsc,modDepth};applyVoicePreset();localStream=dest.stream;localTrack=localStream.getAudioTracks()[0];localTrack.enabled=false;voiceMeterData=new Uint8Array(analyser.fftSize);return localStream;
+    }
+    function disconnectMic(){ stopVoiceActivationMonitor();rawMicStream?.getTracks().forEach(t=>t.stop());localStream?.getTracks().forEach(t=>t.stop());try{micNodes?.modOsc?.stop();}catch{}if(micNodes)Object.values(micNodes).forEach(n=>{try{n.disconnect?.();}catch{}});rawMicStream=localStream=null;localTrack=null;micNodes=null;voiceMeterData=null; }
+
+    async function loadTrystero(){
+      if(joinRoomFactory)return joinRoomFactory;
+      let lastError;
+      for(const source of ['https://cdn.jsdelivr.net/npm/trystero@0.25.3/+esm','https://esm.sh/trystero@0.25.3?bundle']){
+        try{const mod=await import(source);if(typeof mod.joinRoom==='function'){joinRoomFactory=mod.joinRoom;log(`Voice library loaded from ${new URL(source).hostname}.`);return joinRoomFactory;}}catch(error){lastError=error;}
+      }
+      throw new Error(`Voice library did not load${lastError?.message?`: ${lastError.message}`:''}`);
+    }
+
+    async function connect(){
+      if(joined){leaveGroup();return;} if(mode==='offline'){toast('Choose AUTO ONLINE before connecting.','warn');return;} if(!navigator.onLine){toast('No internet connection is detected.','bad');return;}
+      const name=safeName(ui.riderName.value),code=cleanRoom(ui.roomCode.value);ui.riderName.value=name;ui.roomCode.value=code;
+      if(!name){toast('Enter your rider name.','warn');ui.riderName.focus();return;}if(code.length<3){toast('Enter a group code with at least 3 characters.','warn');ui.roomCode.focus();return;}
+      ui.connectBtn.disabled=true;ui.connectBtn.textContent='CONNECTING…';setPill('CONNECTING','warn');
+      try{
+        const joinRoom=await loadTrystero();await createMicrophone();
+        room=joinRoom({appId:APP_ID,password:ui.roomPassword.value||undefined},code);
+        profileAction=room.makeAction('profile');talkAction=room.makeAction('talk');geoAction=room.makeAction('geo');hazardAction=room.makeAction('hazard');waypointAction=room.makeAction('waypoint');
+        room.onPeerJoin=peerId=>{ensurePeer(peerId);sendState(peerId);renderRiders();log(`Rider ${peerId.slice(0,6)} connected.`);};
+        room.onPeerLeave=peerId=>{const p=peers.get(peerId);if(p?.talking)remoteTalking=Math.max(0,remoteTalking-1);removePeerAudio(peerId);removePeerMarker(peerId);peers.delete(peerId);updateDuck();renderRiders();log('A rider disconnected.');};
+        room.onPeerStream=(stream,peerId)=>{ensurePeer(peerId);attachPeerAudio(stream,peerId);};
+        profileAction.onMessage=(data,{peerId})=>{const p=ensurePeer(peerId);p.name=safeName(data?.name)||p.name;p.emblemId=clamp(Number(data?.emblemId)||1,1,EMBLEM_COUNT);updatePeerMarker(peerId);renderRiders();};
+        talkAction.onMessage=(data,{peerId})=>{const p=ensurePeer(peerId),before=p.talking;p.talking=Boolean(data?.talking);if(!before&&p.talking)remoteTalking++;if(before&&!p.talking)remoteTalking=Math.max(0,remoteTalking-1);setPeerAudio(peerId,p.talking);updateDuck();renderRiders();};
+        geoAction.onMessage=(data,{peerId})=>{const p=ensurePeer(peerId);if(data?.sharing===false){p.location=null;removePeerMarker(peerId);renderRiders();return;}const lat=Number(data?.lat),lng=Number(data?.lng);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;p.location={lat,lng,speedMph:Number(data.speedMph),accuracy:Number(data.accuracy)||0,timestamp:Number(data.timestamp)||Date.now()};if(data.emblemId)p.emblemId=clamp(Number(data.emblemId),1,EMBLEM_COUNT);updatePeerMarker(peerId);renderRiders();};
+        hazardAction.onMessage=data=>addHazard(data,true);
+        waypointAction.onMessage=data=>receiveWaypoint(data);
+        await room.addStream(localStream,{metadata:{type:'microphone',riderName:name}});
+        joined=true;localStorage.setItem('ridetalkName',name);localStorage.setItem('ridetalkRoom',code);ui.connectBtn.textContent='DISCONNECT';ui.connectBtn.classList.add('danger');ui.talkCard.classList.remove('hidden');ui.ridersCard.classList.remove('hidden');setPill('CONNECTED','good');refreshTalkControls();startVoiceActivationMonitor();sendState();renderRiders();log(`Connected to group ${code}.`);
+      }catch(error){log(`Connection failed: ${error.message}`);toast(`Connection failed: ${error.message}`,'bad');leaveGroup(true);}
+      finally{ui.connectBtn.disabled=false;if(!joined)ui.connectBtn.textContent='CONNECT';}
+    }
+    function leaveGroup(preserve=false){stopVoiceActivationMonitor();stopTalking();try{room?.leave();}catch{}room=null;joined=false;profileAction=talkAction=geoAction=hazardAction=waypointAction=null;for(const id of peerAudio.keys())removePeerAudio(id);for(const id of peers.keys())removePeerMarker(id);peers.clear();disconnectMic();ui.connectBtn.textContent='CONNECT';ui.connectBtn.classList.remove('danger');ui.talkCard.classList.add('hidden');ui.ridersCard.classList.add('hidden');refreshTalkControls();if(!preserve)updateNetwork();renderRiders();}
+    function ensurePeer(id){if(!peers.has(id))peers.set(id,{name:`Rider ${id.slice(0,5)}`,emblemId:1,talking:false,location:null});return peers.get(id);}
+    async function sendState(target){const options=target?{target}:undefined;const jobs=[];if(profileAction)jobs.push(profileAction.send({name:safeName(ui.riderName.value),emblemId:selectedEmblem},options));if(talkAction)jobs.push(talkAction.send({talking:isTalking},options));if(gpsSharing&&localLocation&&geoAction)jobs.push(geoAction.send({...localLocation,sharing:true,emblemId:selectedEmblem},options));if(localWaypoint&&waypointAction)jobs.push(waypointAction.send({...localWaypoint,sharedBy:safeName(ui.riderName.value)},options));await Promise.allSettled(jobs);}
+
+    function attachPeerAudio(stream,peerId){const ctx=ensureAudio();removePeerAudio(peerId);const source=ctx.createMediaStreamSource(stream),gain=ctx.createGain(),panner=ctx.createStereoPanner(),comp=ctx.createDynamicsCompressor();gain.gain.value=0;panner.pan.value=incomingSide==='left'?-1:1;comp.threshold.value=-30;comp.ratio.value=5;source.connect(gain);gain.connect(panner);panner.connect(comp);comp.connect(ctx.destination);peerAudio.set(peerId,{source,gain,panner,comp});}
+    function removePeerAudio(id){const a=peerAudio.get(id);if(!a)return;Object.values(a).forEach(n=>{try{n.disconnect?.();}catch{}});peerAudio.delete(id);}
+    function setPeerAudio(id,active){const a=peerAudio.get(id);if(!a)return;const ctx=ensureAudio(),target=active?Number(ui.voiceVolume.value)/100:0;a.gain.gain.cancelScheduledValues(ctx.currentTime);a.gain.gain.setTargetAtTime(target,ctx.currentTime,.08);}
+    function updateChannelState(){
+      if(!joined){ui.channelState.textContent='CHANNEL OFFLINE';return;}
+      if(!talkEnabled){ui.channelState.textContent='TALK SYSTEM OFF';return;}
+      if(isTalking){ui.channelState.textContent='TRANSMITTING';return;}
+      if(remoteTalking){ui.channelState.textContent='RIDER TALKING';return;}
+      ui.channelState.textContent=talkMode==='voice'?'VOICE ACTIVATION LISTENING':'CHANNEL READY';
+    }
+
+    function refreshTalkControls(){
+      ui.talkOnBtn.classList.toggle('active',talkEnabled);
+      ui.talkOffBtn.classList.toggle('active',!talkEnabled);
+      ui.toggleTalkModeBtn.classList.toggle('active',talkMode==='toggle');
+      ui.voiceTalkModeBtn.classList.toggle('active',talkMode==='voice');
+      ui.voiceActivationPanel.classList.toggle('hidden',talkMode!=='voice');
+      ui.voiceSensitivityText.textContent=`${ui.voiceSensitivity.value}%`;
+      ui.pttBtn.classList.toggle('active',isTalking);
+      ui.pttBtn.classList.toggle('system-off',!talkEnabled);
+
+      if(!joined){
+        ui.pttBtn.disabled=true;
+        ui.pttBtn.textContent='CONNECT TO USE TALK';
+        ui.voiceActivationStatus.textContent='Waiting for connection';
+      }else if(!talkEnabled){
+        ui.pttBtn.disabled=true;
+        ui.pttBtn.textContent='TALK SYSTEM OFF';
+        ui.voiceActivationStatus.textContent='Voice activation is off';
+      }else if(talkMode==='toggle'){
+        ui.pttBtn.disabled=false;
+        ui.pttBtn.textContent=isTalking?'TALKING — TAP TO STOP':'TAP TO TALK';
+      }else{
+        ui.pttBtn.disabled=false;
+        ui.pttBtn.textContent=isTalking?'VOICE DETECTED — TALKING':'VOICE ACTIVATED — LISTENING';
+        ui.voiceActivationStatus.textContent=isTalking?'Speech detected — transmitting':'Listening for your voice';
+      }
+      updateChannelState();
+    }
+
+    function setTalkEnabled(enabled){
+      talkEnabled=Boolean(enabled);
+      localStorage.setItem('ridetalkTalkEnabled',talkEnabled?'on':'off');
+      if(!talkEnabled){stopVoiceActivationMonitor();stopTalking();}
+      else startVoiceActivationMonitor();
+      refreshTalkControls();
+      toast(`Talk system ${talkEnabled?'on':'off'}.`);
+    }
+
+    function setTalkMode(nextMode){
+      if(!['toggle','voice'].includes(nextMode))return;
+      stopVoiceActivationMonitor();
+      stopTalking();
+      talkMode=nextMode;
+      localStorage.setItem('ridetalkTalkMode',talkMode);
+      refreshTalkControls();
+      startVoiceActivationMonitor();
+      toast(talkMode==='voice'?'Voice activation selected.':'Tap-toggle talk selected.');
+    }
+
+    function startTalking(event,source='manual'){
+      event?.preventDefault();
+      if(!joined||!localTrack||!talkEnabled||isTalking)return;
+      isTalking=true;talkSource=source;localTrack.enabled=true;
+      talkAction?.send({talking:true,at:Date.now(),mode:talkMode}).catch(()=>{});
+      updateDuck();refreshTalkControls();renderRiders();
+    }
+
+    function stopTalking(event){
+      event?.preventDefault();
+      if(!isTalking)return;
+      isTalking=false;talkSource=null;if(localTrack)localTrack.enabled=false;
+      talkAction?.send({talking:false,at:Date.now(),mode:talkMode}).catch(()=>{});
+      updateDuck();refreshTalkControls();renderRiders();
+    }
+
+    function voiceThreshold(){
+      const sensitivity=clamp(Number(ui.voiceSensitivity.value)||62,1,100);
+      return .12-(sensitivity-1)/99*.09;
+    }
+
+    function stopVoiceActivationMonitor(){
+      if(voiceActivationFrame!==null)cancelAnimationFrame(voiceActivationFrame);
+      voiceActivationFrame=null;
+      clearTimeout(voiceReleaseTimer);voiceReleaseTimer=null;
+      if(ui.voiceMeterFill)ui.voiceMeterFill.style.width='0%';
+      if(isTalking&&talkSource==='voice')stopTalking();
+    }
+
+    function startVoiceActivationMonitor(){
+      stopVoiceActivationMonitor();
+      if(!joined||!talkEnabled||talkMode!=='voice'||!micNodes?.analyser||!voiceMeterData){refreshTalkControls();return;}
+      const analyser=micNodes.analyser;
+      const tick=()=>{
+        if(!joined||!talkEnabled||talkMode!=='voice'||!micNodes?.analyser){stopVoiceActivationMonitor();return;}
+        analyser.getByteTimeDomainData(voiceMeterData);
+        let sum=0;
+        for(let i=0;i<voiceMeterData.length;i++){const sample=(voiceMeterData[i]-128)/128;sum+=sample*sample;}
+        const rms=Math.sqrt(sum/voiceMeterData.length);
+        const meter=clamp(Math.round(rms*650),0,100);
+        ui.voiceMeterFill.style.width=`${meter}%`;
+        const speech=rms>=voiceThreshold();
+        if(speech){
+          clearTimeout(voiceReleaseTimer);voiceReleaseTimer=null;
+          if(!isTalking)startTalking(null,'voice');
+          ui.voiceActivationStatus.textContent='Speech detected — transmitting';
+        }else if(isTalking&&talkSource==='voice'&&!voiceReleaseTimer){
+          ui.voiceActivationStatus.textContent='Quiet detected — closing microphone';
+          voiceReleaseTimer=setTimeout(()=>{voiceReleaseTimer=null;if(talkMode==='voice')stopTalking();},700);
+        }else if(!isTalking){
+          ui.voiceActivationStatus.textContent='Listening for your voice';
+        }
+        voiceActivationFrame=requestAnimationFrame(tick);
+      };
+      voiceActivationFrame=requestAnimationFrame(tick);
+      refreshTalkControls();
+    }
+
+    function handleTalkButtonClick(event){
+      if(!joined||!talkEnabled)return;
+      if(talkMode==='toggle'){isTalking?stopTalking(event):startTalking(event,'toggle');}
+      else if(talkMode==='voice')toast('Voice activation is listening automatically. Use the ON/OFF switch to mute it.');
+    }
+
+    function setupMusic(){if(musicGraph)return musicGraph;const ctx=ensureAudio(),source=ctx.createMediaElementSource(ui.musicPlayer),left=ctx.createStereoPanner(),right=ctx.createStereoPanner(),lg=ctx.createGain(),rg=ctx.createGain();left.pan.value=-1;right.pan.value=1;lg.gain.value=rg.gain.value=.72;source.connect(left);source.connect(right);left.connect(lg);right.connect(rg);lg.connect(ctx.destination);rg.connect(ctx.destination);musicGraph={source,left,right,lg,rg,normal:.72};return musicGraph;}
+    function updateDuck(){if(!musicGraph)return;const ctx=ensureAudio(),active=isTalking||remoteTalking>0,duck=Number(ui.duckVolume.value)/100,target=musicGraph.normal*(active?duck:1),selected=incomingSide==='left'?musicGraph.lg.gain:musicGraph.rg.gain,other=incomingSide==='left'?musicGraph.rg.gain:musicGraph.lg.gain;selected.cancelScheduledValues(ctx.currentTime);other.cancelScheduledValues(ctx.currentTime);selected.setTargetAtTime(target,ctx.currentTime,active?.13:.3);other.setTargetAtTime(musicGraph.normal,ctx.currentTime,.13);}
+    function updateEar(){incomingSide=ui.rightEar.classList.contains('active')?'right':'left';localStorage.setItem('ridetalkEar',incomingSide);for(const a of peerAudio.values())a.panner.pan.value=incomingSide==='left'?-1:1;updateDuck();}
+
+    function onLocation(position){const c=position.coords,direct=Number.isFinite(c.speed)?c.speed*2.236936:NaN,next={lat:Number(c.latitude),lng:Number(c.longitude),speedMph:direct,accuracy:Number(c.accuracy)*3.28084,timestamp:Number(position.timestamp)||Date.now()};if(!Number.isFinite(next.speedMph)&&previousLocation){const seconds=(next.timestamp-previousLocation.timestamp)/1000,miles=haversine(previousLocation,next),mph=miles/(seconds/3600);next.speedMph=seconds>.5&&mph>=0&&mph<=180?mph:NaN;}previousLocation=localLocation;localLocation=next;ui.gpsStatus.textContent='ACTIVE';ui.speedText.textContent=formatSpeed(next.speedMph);ui.accuracyText.textContent=`±${Math.round(next.accuracy)} ft`;updateLocalMarker();renderRiders();updateWaypointText();if(map&&!riderMarkers.has('_centered')){map.setView([next.lat,next.lng],15);riderMarkers.set('_centered',true);}if(joined)geoAction?.send({...next,sharing:true,emblemId:selectedEmblem}).catch(()=>{});}
+    function startGps(){if(gpsSharing){stopGps();return;}if(!navigator.geolocation){toast('GPS is not supported.','bad');return;}gpsSharing=true;ui.gpsBtn.textContent='STOP GPS';ui.gpsBtn.classList.add('danger');ui.gpsStatus.textContent='WAITING';gpsWatch=navigator.geolocation.watchPosition(onLocation,e=>{toast(`GPS error: ${e.message}`,'bad');log(`GPS error: ${e.message}`);},{enableHighAccuracy:true,maximumAge:1500,timeout:15000});log('GPS tracking started.');}
+    function stopGps(){if(gpsWatch!==null)navigator.geolocation.clearWatch(gpsWatch);gpsWatch=null;gpsSharing=false;ui.gpsBtn.textContent='START GPS';ui.gpsBtn.classList.remove('danger');ui.gpsStatus.textContent='OFF';geoAction?.send({sharing:false,timestamp:Date.now()}).catch(()=>{});}
+    function updateLocalMarker(){if(!map||!localLocation)return;let marker=riderMarkers.get('local');if(!marker){marker=L.marker([localLocation.lat,localLocation.lng],{icon:riderIcon(selectedEmblem,'You'),zIndexOffset:1000}).addTo(map);riderMarkers.set('local',marker);}else{marker.setLatLng([localLocation.lat,localLocation.lng]);marker.setIcon(riderIcon(selectedEmblem,'You'));}marker.bindPopup(`<strong>${escapeHtml(safeName(ui.riderName.value)||'You')}</strong><br>Speed: ${formatSpeed(localLocation.speedMph)}<br>Accuracy: ±${Math.round(localLocation.accuracy)} ft`);}
+    function updatePeerMarker(id){if(!map)return;const p=peers.get(id);if(!p?.location)return;let marker=riderMarkers.get(id);if(!marker){marker=L.marker([p.location.lat,p.location.lng],{icon:riderIcon(p.emblemId,p.name)}).addTo(map);riderMarkers.set(id,marker);}else{marker.setLatLng([p.location.lat,p.location.lng]);marker.setIcon(riderIcon(p.emblemId,p.name));}marker.bindPopup(`<strong>${escapeHtml(p.name)}</strong><br>${localLocation?`Distance: ${formatDistance(haversine(localLocation,p.location))}<br>`:''}Speed: ${formatSpeed(p.location.speedMph)}`);}
+    function removePeerMarker(id){const marker=riderMarkers.get(id);if(marker&&marker!==true&&map)map.removeLayer(marker);riderMarkers.delete(id);}
+    function fitRiders(){if(!map){toast('Map engine is unavailable.','warn');return;}const points=[];if(localLocation)points.push([localLocation.lat,localLocation.lng]);for(const p of peers.values())if(p.location)points.push([p.location.lat,p.location.lng]);if(localWaypoint)points.push([localWaypoint.lat,localWaypoint.lng]);if(!points.length){toast('No locations are available yet.','warn');return;}points.length===1?map.setView(points[0],15):map.fitBounds(points,{padding:[45,45],maxZoom:16});}
+
+    function setWaypoint(lat,lng,name='Waypoint'){localWaypoint={lat:Number(lat),lng:Number(lng),name:String(name).slice(0,80),timestamp:Date.now()};if(map){if(!localWaypointMarker)localWaypointMarker=L.marker([lat,lng]).addTo(map);else localWaypointMarker.setLatLng([lat,lng]);localWaypointMarker.bindPopup(`<strong>${escapeHtml(localWaypoint.name)}</strong><br>Personal waypoint`);map.setView([lat,lng],Math.max(map.getZoom(),13));}updateWaypointText();toast(`Waypoint set: ${localWaypoint.name}`);}
+    function updateWaypointText(){const waypoint=groupWaypoint||localWaypoint;if(!waypoint){ui.waypointText.textContent='NONE';return;}ui.waypointText.textContent=localLocation?formatDistance(haversine(localLocation,waypoint)):'SET';}
+    function clearWaypoint(share=false){localWaypoint=groupWaypoint=null;if(localWaypointMarker&&map)map.removeLayer(localWaypointMarker);if(groupWaypointMarker&&map)map.removeLayer(groupWaypointMarker);localWaypointMarker=groupWaypointMarker=null;updateWaypointText();if(share)waypointAction?.send({clear:true,timestamp:Date.now()}).catch(()=>{});}
+    function shareWaypoint(){if(!joined){toast('Connect to the riding group first.','warn');return;}const w=localWaypoint||groupWaypoint;if(!w){toast('Set a waypoint first.','warn');return;}waypointAction.send({...w,sharedBy:safeName(ui.riderName.value)}).then(()=>toast('Waypoint shared.')).catch(e=>toast(e.message,'bad'));}
+    function receiveWaypoint(data){if(data?.clear){groupWaypoint=null;if(groupWaypointMarker&&map)map.removeLayer(groupWaypointMarker);groupWaypointMarker=null;updateWaypointText();return;}const lat=Number(data?.lat),lng=Number(data?.lng);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;groupWaypoint={lat,lng,name:String(data.name||'Group waypoint'),sharedBy:String(data.sharedBy||'A rider')};if(map){if(!groupWaypointMarker)groupWaypointMarker=L.marker([lat,lng]).addTo(map);else groupWaypointMarker.setLatLng([lat,lng]);groupWaypointMarker.bindPopup(`<strong>${escapeHtml(groupWaypoint.name)}</strong><br>Shared by ${escapeHtml(groupWaypoint.sharedBy)}`);}updateWaypointText();toast(`${groupWaypoint.sharedBy} shared a waypoint.`);}
+
+    async function searchPlace(){if(!navigator.onLine){toast('Place search needs internet.','warn');return;}const query=ui.placeSearch.value.trim();if(query.length<2){toast('Enter at least two characters.','warn');return;}ui.searchBtn.disabled=true;ui.searchResults.replaceChildren();try{const response=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=8&language=en&format=json`);if(!response.ok)throw new Error(`Search returned ${response.status}`);const data=await response.json(),results=Array.isArray(data.results)?data.results:[];if(!results.length){ui.searchResults.textContent='No places found.';return;}for(const place of results){const b=document.createElement('button');b.className='search-result';b.type='button';b.innerHTML=`<strong>${escapeHtml(place.name||query)}</strong><div class="small">${escapeHtml([place.admin1,place.country,place.postcodes?.[0]].filter(Boolean).join(' • '))}</div>`;b.onclick=()=>{setWaypoint(Number(place.latitude),Number(place.longitude),[place.name,place.admin1,place.country].filter(Boolean).join(', '));ui.searchResults.replaceChildren();};ui.searchResults.append(b);}}catch(error){toast(`Search failed: ${error.message}`,'bad');}finally{ui.searchBtn.disabled=false;}}
+
+    function addHazard(data,incoming=false){if(!data?.id||hazards.has(data.id))return;const hazard={id:String(data.id),type:data.type==='roadblock'?'roadblock':'wreck',lat:Number(data.lat),lng:Number(data.lng),note:String(data.note||'').slice(0,80),riderName:String(data.riderName||'A rider').slice(0,24),createdAt:Number(data.createdAt)||Date.now(),expiresAt:Number(data.expiresAt)||Date.now()+HAZARD_LIFETIME};if(!Number.isFinite(hazard.lat)||!Number.isFinite(hazard.lng)||hazard.expiresAt<=Date.now())return;hazards.set(hazard.id,hazard);if(map){const marker=L.marker([hazard.lat,hazard.lng],{icon:hazardIcon(hazard.type),zIndexOffset:700}).addTo(map);marker.bindPopup(`<strong>${hazard.type==='roadblock'?'🛑 Roadblock':'💥 Car wreck'}</strong><br>${escapeHtml(hazard.note)}<br>Reported by ${escapeHtml(hazard.riderName)}`);hazardMarkers.set(hazard.id,marker);}renderHazards();if(incoming){const title=hazard.type==='roadblock'?'Roadblock':'Car wreck';toast(`${title}${hazard.note?`: ${hazard.note}`:''}`,hazard.type==='wreck'?'bad':'warn');if('Notification'in window&&Notification.permission==='granted')try{new Notification(`RideTalk: ${title}`,{body:hazard.note||`Reported by ${hazard.riderName}`});}catch{}}}
+    function reportHazard(type){if(!joined){toast('Connect to the group first.','warn');return;}if(!localLocation){toast('Start GPS before reporting an alert.','warn');return;}if(Number.isFinite(localLocation.speedMph)&&localLocation.speedMph>5){toast('Stop moving before using report buttons.','bad');return;}const h={id:`${Date.now()}-${crypto.getRandomValues(new Uint32Array(1))[0]}`,type,lat:localLocation.lat,lng:localLocation.lng,note:ui.hazardNote.value.trim(),riderName:safeName(ui.riderName.value),createdAt:Date.now(),expiresAt:Date.now()+HAZARD_LIFETIME};addHazard(h);hazardAction?.send(h).catch(()=>{});ui.hazardNote.value='';}
+    function renderHazards(){for(const [id,h] of hazards)if(h.expiresAt<=Date.now()){hazards.delete(id);const m=hazardMarkers.get(id);if(m&&map)map.removeLayer(m);hazardMarkers.delete(id);}ui.hazardList.replaceChildren();for(const h of [...hazards.values()].sort((a,b)=>b.createdAt-a.createdAt)){const row=document.createElement('div');row.className='list-item';row.innerHTML=`<div style="font-size:1.5rem">${h.type==='roadblock'?'🛑':'💥'}</div><div class="grow"><strong>${h.type==='roadblock'?'Roadblock':'Car wreck'}</strong><div class="small">${escapeHtml(h.riderName)}${h.note?` • ${escapeHtml(h.note)}`:''}${localLocation?` • ${formatDistance(haversine(localLocation,h))}`:''}</div></div>`;row.onclick=()=>{map?.setView([h.lat,h.lng],16);hazardMarkers.get(h.id)?.openPopup();};ui.hazardList.append(row);}if(!hazards.size)ui.hazardList.innerHTML='<div class="small">No active road alerts.</div>';ui.alertCount.textContent=hazards.size;}
+
+    function renderRiders(){ui.riderList.replaceChildren();const add=(name,emblem,talking,sub)=>{const row=document.createElement('div');row.className='list-item';row.innerHTML=`${emblemHtml(emblem,38)}<div class="grow"><strong>${escapeHtml(name)}</strong><div class="small">${sub}</div></div><span class="dot ${talking?'live':''}"></span>`;ui.riderList.append(row);};add(safeName(ui.riderName.value)||'You',selectedEmblem,isTalking,localLocation?`${formatSpeed(localLocation.speedMph)} • this phone`:'This phone • GPS not shared');for(const p of peers.values())add(p.name,p.emblemId,p.talking,p.location?`${localLocation?formatDistance(haversine(localLocation,p.location))+' away • ':''}${formatSpeed(p.location.speedMph)}`:'GPS not shared');ui.riderCount.textContent=`${peers.size+1} / ${MAX_RIDERS} riders`;ui.gpsRiderCount.textContent=[...peers.values()].filter(p=>p.location).length+(localLocation?1:0);updateChannelState();}
+
+    function updateNetwork(){const online=navigator.onLine;if(mode==='offline'){ui.networkText.textContent='Offline-local mode';ui.networkDetail.textContent='Local GPS, map, music and settings remain available. Group voice and live sharing are paused.';setPill('OFFLINE MODE','warn');}else if(!online){ui.networkText.textContent='No internet connection';ui.networkDetail.textContent='RideTalk will work locally and can reconnect after mobile data or Wi-Fi returns.';setPill('NO INTERNET','bad');}else{ui.networkText.textContent='Internet detected';ui.networkDetail.textContent='Map and group connection systems are ready.';if(!joined)setPill('READY ONLINE','good');}ui.onlineMode.classList.toggle('active',mode==='online');ui.offlineMode.classList.toggle('active',mode==='offline');}
+    function setMode(value){mode=value;localStorage.setItem('ridetalkMode',value);if(value==='offline'&&joined)leaveGroup(true);updateNetwork();}
+
+    function updateSliders(){ui.voiceVolumeText.textContent=`${ui.voiceVolume.value}%`;ui.duckVolumeText.textContent=`${ui.duckVolume.value}%`;const v=Number(ui.rgbSpeed.value),duration=42-((v-1)/99)*36;document.documentElement.style.setProperty('--rgb-duration',`${duration}s`);ui.rgbSpeedText.textContent=`${v}%`;for(const [id,p] of peers)if(p.talking)setPeerAudio(id,true);updateDuck();}
+    async function testEar(){const ctx=ensureAudio(),osc=ctx.createOscillator(),gain=ctx.createGain(),pan=ctx.createStereoPanner();osc.frequency.value=680;pan.pan.value=incomingSide==='left'?-1:1;gain.gain.setValueAtTime(.0001,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(.14,ctx.currentTime+.02);gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+.42);osc.connect(gain);gain.connect(pan);pan.connect(ctx.destination);osc.start();osc.stop(ctx.currentTime+.45);}
+
+    function collectDiagnostics(){const checks=[
+      ['Secure website',window.isSecureContext,window.isSecureContext?'HTTPS permission features are available.':'Open the GitHub Pages HTTPS address.'],
+      ['Internet and mode',navigator.onLine||mode==='offline',mode==='offline'?'Offline-local mode is selected.':navigator.onLine?'Browser reports an internet connection.':'No internet connection is detected.'],
+      ['Map engine',leafletReady&&Boolean(map),leafletReady?'Leaflet loaded and the map was created.':'Leaflet did not load.'],
+      ['Microphone API',Boolean(navigator.mediaDevices?.getUserMedia),navigator.mediaDevices?.getUserMedia?'Microphone API is available.':'Microphone API is unavailable.'],
+      ['GPS API',Boolean(navigator.geolocation),navigator.geolocation?'GPS API is available.':'GPS API is unavailable.'],
+      ['Audio engine',Boolean(window.AudioContext||window.webkitAudioContext),'Browser audio engine check.'],
+      ['Online room',!joined||Boolean(room&&localTrack?.readyState==='live'),joined?'Room and microphone track are active.':'Not currently joined.'],
+      ['Talk controls',Boolean(ui.talkOnBtn&&ui.toggleTalkModeBtn&&ui.voiceTalkModeBtn),`Talk system ${talkEnabled?'on':'off'} • ${talkMode} mode.`],
+      ['Voice changer',VOICE_PRESETS.length===100&&Boolean(ui.voiceCategory&&ui.voicePreset),`${voiceChangerEnabled?'On':'Off'} • #${currentVoicePreset().id} ${currentVoicePreset().category} / ${currentVoicePreset().name} • ${VOICE_PRESETS.length} presets.`],
+      ['Page controls',Boolean(ui.connectBtn&&ui.gpsBtn&&ui.mapEngine),'Main controls are attached.']
+    ].map(([name,ok,detail])=>({name,ok:Boolean(ok),detail}));lastDiagnostics=checks;return checks;}
+    function renderDiagnostics(){ui.diagnostics.replaceChildren();for(const c of collectDiagnostics()){const row=document.createElement('div');row.className=`diagnostic ${c.ok?'':'fail'}`;row.innerHTML=`<div class="icon">${c.ok?'✓':'!'}</div><div><strong>${escapeHtml(c.name)}</strong><div class="small">${escapeHtml(c.detail)}</div></div>`;ui.diagnostics.append(row);}}
+    function downloadReport(){renderDiagnostics();const text=['RideTalk diagnostic report',`Generated: ${new Date().toISOString()}`,`URL: ${location.href}`,`Online: ${navigator.onLine}`,`Secure context: ${window.isSecureContext}`,`Mode: ${mode}`,`Joined: ${joined}`,`Talk system: ${talkEnabled?'on':'off'}`,`Talk mode: ${talkMode}`,`Voice sensitivity: ${ui.voiceSensitivity.value}%`,`Voice changer: ${voiceChangerEnabled?'on':'off'}`,`Voice preset: #${currentVoicePreset().id} ${currentVoicePreset().category} / ${currentVoicePreset().name}`,'','Checks:',...lastDiagnostics.map(c=>`${c.ok?'PASS':'FAIL'} - ${c.name}: ${c.detail}`),'','Connection log:',ui.log.textContent].join('\n');const blob=new Blob([text],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`RideTalk-diagnostic-${Date.now()}.txt`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+
+    function copyInvite(){const code=cleanRoom(ui.roomCode.value);if(!code){toast('Enter a group code first.','warn');return;}const url=new URL(location.href);url.searchParams.set('room',code);const text=`Join my RideTalk group.\nGroup code: ${code}\n${url}\nI will send the private password separately.`;navigator.clipboard?.writeText(text).then(()=>toast('Invite copied.')).catch(()=>prompt('Copy this invite:',text));}
+    function loadSaved(){ui.riderName.value=localStorage.getItem('ridetalkName')||'';ui.roomCode.value=cleanRoom(new URL(location.href).searchParams.get('room')||localStorage.getItem('ridetalkRoom')||'');ui.leftEar.classList.toggle('active',incomingSide==='left');ui.rightEar.classList.toggle('active',incomingSide==='right');ui.voiceSensitivity.value=clamp(Number(localStorage.getItem('ridetalkVoiceSensitivity'))||62,1,100);fillVoiceCategories();selectVoicePreset(selectedVoicePreset);selectEmblem(selectedEmblem);updateSliders();refreshTalkControls();updateNetwork();}
+
+    ui.onlineMode.onclick=()=>setMode('online');ui.offlineMode.onclick=()=>setMode('offline');ui.permissionBtn.onclick=requestPermissions;ui.notifyBtn.onclick=enableNotifications;ui.retryBtn.onclick=async()=>{if(!leafletReady){await loadLeaflet();if(leafletReady&&!map)initMap();}updatePermissions();updateNetwork();renderDiagnostics();};
+    ui.connectBtn.onclick=connect;ui.copyInviteBtn.onclick=copyInvite;ui.gpsBtn.onclick=startGps;ui.centerBtn.onclick=()=>localLocation&&map?map.setView([localLocation.lat,localLocation.lng],16):toast('Start GPS first.','warn');ui.fitBtn.onclick=fitRiders;ui.searchBtn.onclick=searchPlace;ui.placeSearch.onkeydown=e=>{if(e.key==='Enter')searchPlace();};ui.shareWaypointBtn.onclick=shareWaypoint;ui.clearWaypointBtn.onclick=()=>clearWaypoint(true);ui.roadblockBtn.onclick=()=>reportHazard('roadblock');ui.wreckBtn.onclick=()=>reportHazard('wreck');
+    ui.goEmblemBtn.onclick=()=>selectEmblem(ui.emblemNumber.value);ui.randomEmblemBtn.onclick=()=>selectEmblem(crypto.getRandomValues(new Uint32Array(1))[0]%EMBLEM_COUNT+1);ui.prevEmblems.onclick=()=>{emblemPage--;renderEmblems();};ui.nextEmblems.onclick=()=>{emblemPage++;renderEmblems();};
+    ui.leftEar.onclick=()=>{ui.leftEar.classList.add('active');ui.rightEar.classList.remove('active');updateEar();};ui.rightEar.onclick=()=>{ui.rightEar.classList.add('active');ui.leftEar.classList.remove('active');updateEar();};ui.voiceVolume.oninput=updateSliders;ui.duckVolume.oninput=updateSliders;ui.rgbSpeed.oninput=updateSliders;ui.testEarBtn.onclick=testEar;
+    ui.musicFile.onchange=()=>{const file=ui.musicFile.files?.[0];if(!file)return;setupMusic();if(ui.musicPlayer.src.startsWith('blob:'))URL.revokeObjectURL(ui.musicPlayer.src);ui.musicPlayer.src=URL.createObjectURL(file);ui.musicPlayer.play().catch(()=>{});updateDuck();log(`Music loaded: ${file.name}`);};ui.pandoraBtn.onclick=()=>window.open('https://www.pandora.com/','_blank','noopener,noreferrer');ui.youtubeMusicBtn.onclick=()=>window.open('https://music.youtube.com/','_blank','noopener,noreferrer');
+    ui.talkOnBtn.onclick=()=>setTalkEnabled(true);ui.talkOffBtn.onclick=()=>setTalkEnabled(false);ui.toggleTalkModeBtn.onclick=()=>setTalkMode('toggle');ui.voiceTalkModeBtn.onclick=()=>setTalkMode('voice');ui.voiceSensitivity.oninput=()=>{ui.voiceSensitivityText.textContent=`${ui.voiceSensitivity.value}%`;localStorage.setItem('ridetalkVoiceSensitivity',ui.voiceSensitivity.value);};ui.voiceChangerOnBtn.onclick=()=>setVoiceChangerEnabled(true);ui.voiceChangerOffBtn.onclick=()=>setVoiceChangerEnabled(false);ui.voiceCategory.onchange=()=>selectVoiceCategory(ui.voiceCategory.value);ui.voicePreset.onchange=()=>selectVoicePreset(ui.voicePreset.value);ui.pttBtn.addEventListener('click',handleTalkButtonClick);ui.diagnosticBtn.onclick=renderDiagnostics;ui.downloadReportBtn.onclick=downloadReport;
+    ui.riderName.oninput=()=>{localStorage.setItem('ridetalkName',safeName(ui.riderName.value));renderRiders();};ui.roomCode.oninput=()=>{ui.roomCode.value=cleanRoom(ui.roomCode.value);localStorage.setItem('ridetalkRoom',ui.roomCode.value);};ui.noiseMode.onchange=()=>{if(joined)toast('Reconnect to apply the new microphone filter.','warn');};
+    window.addEventListener('online',updateNetwork);window.addEventListener('offline',()=>{if(joined)leaveGroup(true);updateNetwork();});window.addEventListener('pagehide',()=>{stopTalking();try{room?.leave();}catch{}});document.addEventListener('visibilitychange',()=>{if(document.hidden)stopTalking();});window.addEventListener('error',e=>log(`PAGE ERROR: ${e.message}`));window.addEventListener('unhandledrejection',e=>log(`PROMISE ERROR: ${e.reason?.message||e.reason}`));
+    setInterval(()=>{renderHazards();renderRiders();updateWaypointText();},10000);
+
+    async function boot(){loadSaved();await loadLeaflet();initMap();await updatePermissions();renderHazards();renderRiders();renderDiagnostics();updateNetwork();log(leafletReady?'Map engine ready.':'Map engine failed to load.');}
+    boot();
+  </script>
+</body>
+</html>
