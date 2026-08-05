@@ -1,0 +1,1285 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#070b12" />
+  <title>RideTalk 20</title>
+
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070b12;
+      --panel: #101827;
+      --panel-2: #172235;
+      --line: #26354d;
+      --text: #f4f7fb;
+      --muted: #9eacc0;
+      --green: #45e08a;
+      --yellow: #ffd166;
+      --red: #ff5c6c;
+      --blue: #59a9ff;
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top, #16233a 0, var(--bg) 38%),
+        var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      padding:
+        max(14px, env(safe-area-inset-top))
+        max(14px, env(safe-area-inset-right))
+        max(22px, env(safe-area-inset-bottom))
+        max(14px, env(safe-area-inset-left));
+    }
+
+    button, input, select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .app {
+      width: min(760px, 100%);
+      margin: 0 auto;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(1.55rem, 7vw, 2.25rem);
+      letter-spacing: -0.04em;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .status-pill {
+      min-width: 105px;
+      padding: 9px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(16, 24, 39, 0.86);
+      color: var(--muted);
+      text-align: center;
+      font-weight: 800;
+      font-size: 0.82rem;
+    }
+
+    .status-pill.online {
+      border-color: rgba(69, 224, 138, 0.55);
+      color: var(--green);
+    }
+
+    .card {
+      margin-bottom: 14px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(16, 24, 39, 0.92);
+      box-shadow: 0 12px 38px rgba(0,0,0,0.22);
+      backdrop-filter: blur(14px);
+    }
+
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 0.84rem;
+      font-weight: 750;
+    }
+
+    input, select {
+      width: 100%;
+      min-height: 48px;
+      padding: 11px 12px;
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      outline: none;
+      background: #0b1220;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(89, 169, 255, 0.14);
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .btn {
+      min-height: 48px;
+      padding: 11px 16px;
+      border: 0;
+      border-radius: 13px;
+      color: #06110c;
+      background: var(--green);
+      font-weight: 900;
+    }
+
+    .btn.secondary {
+      color: var(--text);
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+    }
+
+    .btn.danger {
+      color: white;
+      background: #a92f40;
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .channel-bar {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: #0b1220;
+      margin-bottom: 12px;
+    }
+
+    .channel-state {
+      font-weight: 900;
+    }
+
+    .channel-state.busy {
+      color: var(--yellow);
+    }
+
+    .channel-state.talking {
+      color: var(--green);
+    }
+
+    .rider-count {
+      color: var(--muted);
+      font-size: 0.88rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .ptt {
+      width: 100%;
+      min-height: 175px;
+      border: 3px solid rgba(69, 224, 138, 0.7);
+      border-radius: 30px;
+      color: #08120d;
+      background:
+        radial-gradient(circle at 50% 28%, #9bffc4 0, #45e08a 42%, #20a967 100%);
+      box-shadow:
+        0 16px 42px rgba(69, 224, 138, 0.18),
+        inset 0 -10px 22px rgba(0,0,0,0.2);
+      font-size: clamp(1.45rem, 7vw, 2.1rem);
+      font-weight: 1000;
+      letter-spacing: 0.03em;
+      user-select: none;
+    }
+
+    .ptt.active {
+      transform: translateY(2px) scale(0.99);
+      color: white;
+      border-color: #ff9aa4;
+      background:
+        radial-gradient(circle at 50% 28%, #ff96a1 0, #ff5c6c 48%, #b82b3b 100%);
+      box-shadow:
+        0 10px 28px rgba(255, 92, 108, 0.2),
+        inset 0 8px 20px rgba(0,0,0,0.2);
+    }
+
+    .ptt:disabled {
+      filter: grayscale(0.8);
+      opacity: 0.5;
+    }
+
+    .hint {
+      margin: 10px 0 0;
+      color: var(--muted);
+      text-align: center;
+      font-size: 0.84rem;
+      line-height: 1.45;
+    }
+
+    .setting-line {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      min-height: 50px;
+      border-bottom: 1px solid rgba(38,53,77,0.7);
+    }
+
+    .setting-line:last-child {
+      border-bottom: 0;
+    }
+
+    .setting-title {
+      font-weight: 850;
+    }
+
+    .setting-note {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .side-switch {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      overflow: hidden;
+      min-width: 160px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #0b1220;
+    }
+
+    .side-switch button {
+      min-height: 42px;
+      border: 0;
+      color: var(--muted);
+      background: transparent;
+      font-weight: 900;
+    }
+
+    .side-switch button.selected {
+      color: #06110c;
+      background: var(--blue);
+    }
+
+    .range-wrap {
+      display: grid;
+      grid-template-columns: 1fr 44px;
+      gap: 8px;
+      align-items: center;
+      width: min(270px, 48vw);
+    }
+
+    input[type="range"] {
+      min-height: 40px;
+      padding: 0;
+      accent-color: var(--blue);
+      border: 0;
+      box-shadow: none;
+      background: transparent;
+    }
+
+    .music-controls {
+      display: grid;
+      gap: 10px;
+    }
+
+    audio {
+      width: 100%;
+      min-height: 48px;
+    }
+
+    .rider-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .rider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 48px;
+      padding: 9px 11px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: #0b1220;
+    }
+
+    .avatar {
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      color: #05120b;
+      background: var(--green);
+      font-weight: 1000;
+    }
+
+    .rider-info {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .rider-name {
+      overflow: hidden;
+      font-weight: 900;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .rider-sub {
+      color: var(--muted);
+      font-size: 0.75rem;
+    }
+
+    .talk-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #3e4b61;
+    }
+
+    .talk-dot.live {
+      background: var(--green);
+      box-shadow: 0 0 0 6px rgba(69,224,138,0.12);
+    }
+
+    .log {
+      max-height: 155px;
+      overflow: auto;
+      padding: 11px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      color: var(--muted);
+      background: #070d18;
+      font: 0.78rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .notice {
+      padding: 12px;
+      border: 1px solid rgba(255, 209, 102, 0.35);
+      border-radius: 13px;
+      color: #ffe6a3;
+      background: rgba(255, 209, 102, 0.08);
+      font-size: 0.83rem;
+      line-height: 1.45;
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 560px) {
+      .grid { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+      .setting-line {
+        grid-template-columns: 1fr;
+        padding: 10px 0;
+      }
+      .side-switch, .range-wrap { width: 100%; }
+      .topbar { align-items: flex-start; }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1>🏍️ RideTalk 20</h1>
+        <p>Push-to-talk motorcycle group audio</p>
+      </div>
+      <div id="connectionPill" class="status-pill">OFFLINE</div>
+    </header>
+
+    <section class="card" id="joinCard">
+      <h2>Join a riding group</h2>
+
+      <div class="grid">
+        <div class="field">
+          <label for="riderName">Rider name</label>
+          <input id="riderName" maxlength="24" autocomplete="nickname"
+                 placeholder="Example: Road Captain" />
+        </div>
+
+        <div class="field">
+          <label for="roomCode">Group code</label>
+          <input id="roomCode" maxlength="32" autocapitalize="characters"
+                 placeholder="Example: NIGHT-RIDE" />
+        </div>
+
+        <div class="field full">
+          <label for="roomPassword">Private group password</label>
+          <input id="roomPassword" type="password" maxlength="64"
+                 placeholder="Everyone must use the same password" />
+        </div>
+      </div>
+
+      <div class="button-row">
+        <button id="joinBtn" class="btn">CONNECT</button>
+        <button id="copyInviteBtn" class="btn secondary">COPY INVITE</button>
+      </div>
+
+      <p class="hint">
+        The page must be hosted on HTTPS for microphone access. Everyone enters
+        the same group code and password.
+      </p>
+    </section>
+
+    <section id="talkCard" class="card hidden">
+      <div class="channel-bar">
+        <div id="channelState" class="channel-state">CHANNEL READY</div>
+        <div id="riderCount" class="rider-count">1 / 20 riders</div>
+      </div>
+
+      <button id="pttBtn" class="ptt" disabled>
+        HOLD TO TALK
+      </button>
+
+      <p class="hint">
+        Keep the phone mounted. Do not handle or look at the phone while riding.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Headset and voice settings</h2>
+
+      <div class="setting-line">
+        <div>
+          <div class="setting-title">Incoming voice ear</div>
+          <div class="setting-note">Music keeps playing while rider voices use one side.</div>
+        </div>
+
+        <div class="side-switch" aria-label="Incoming voice side">
+          <button id="leftBtn" class="selected" type="button">LEFT</button>
+          <button id="rightBtn" type="button">RIGHT</button>
+        </div>
+      </div>
+
+      <div class="setting-line">
+        <div>
+          <div class="setting-title">Rider voice volume</div>
+          <div class="setting-note">Changes incoming radio volume only.</div>
+        </div>
+
+        <div class="range-wrap">
+          <input id="voiceVolume" type="range" min="0" max="150" value="100" />
+          <strong id="voiceVolumeValue">100%</strong>
+        </div>
+      </div>
+
+      <div class="setting-line">
+        <div>
+          <div class="setting-title">Music volume while someone talks</div>
+          <div class="setting-note">Set to 100% to prevent music ducking.</div>
+        </div>
+
+        <div class="range-wrap">
+          <input id="talkMusicVolume" type="range" min="10" max="100" value="100" />
+          <strong id="talkMusicVolumeValue">100%</strong>
+        </div>
+      </div>
+
+      <div class="setting-line">
+        <div>
+          <div class="setting-title">Bluetooth / audio output</div>
+          <div class="setting-note">
+            Connect Bluetooth in Android first, then refresh this list.
+          </div>
+        </div>
+
+        <select id="audioOutput">
+          <option value="">Phone-selected output</option>
+        </select>
+      </div>
+
+      <div class="button-row">
+        <button id="refreshDevicesBtn" class="btn secondary">REFRESH DEVICES</button>
+        <button id="testSideBtn" class="btn secondary">TEST VOICE SIDE</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Music player</h2>
+
+      <div class="music-controls">
+        <input id="musicFile" type="file" accept="audio/*" />
+        <audio id="musicPlayer" controls loop playsinline></audio>
+      </div>
+
+      <p class="hint">
+        Choose a music file stored on this phone. Voice audio is mixed over it
+        instead of pausing it.
+      </p>
+    </section>
+
+    <section id="ridersCard" class="card hidden">
+      <h2>Connected riders</h2>
+      <div id="riderList" class="rider-list"></div>
+    </section>
+
+    <section class="card">
+      <div class="notice">
+        <strong>Important:</strong> This is a browser-based peer-to-peer version.
+        It works best with a strong mobile data connection. Twenty riders can be
+        demanding for phone browsers; for a production group this large, an SFU
+        voice server is more reliable.
+      </div>
+
+      <h2 style="margin-top:16px">Connection log</h2>
+      <div id="log" class="log">Ready.</div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { joinRoom } from "https://esm.sh/trystero@0.23.0";
+
+    const MAX_RIDERS = 20;
+    const APP_ID = "ridetalk-20-v1";
+
+    const $ = (id) => document.getElementById(id);
+
+    const ui = {
+      joinCard: $("joinCard"),
+      talkCard: $("talkCard"),
+      ridersCard: $("ridersCard"),
+      riderName: $("riderName"),
+      roomCode: $("roomCode"),
+      roomPassword: $("roomPassword"),
+      joinBtn: $("joinBtn"),
+      copyInviteBtn: $("copyInviteBtn"),
+      pttBtn: $("pttBtn"),
+      channelState: $("channelState"),
+      riderCount: $("riderCount"),
+      connectionPill: $("connectionPill"),
+      leftBtn: $("leftBtn"),
+      rightBtn: $("rightBtn"),
+      voiceVolume: $("voiceVolume"),
+      voiceVolumeValue: $("voiceVolumeValue"),
+      talkMusicVolume: $("talkMusicVolume"),
+      talkMusicVolumeValue: $("talkMusicVolumeValue"),
+      audioOutput: $("audioOutput"),
+      refreshDevicesBtn: $("refreshDevicesBtn"),
+      testSideBtn: $("testSideBtn"),
+      musicFile: $("musicFile"),
+      musicPlayer: $("musicPlayer"),
+      riderList: $("riderList"),
+      log: $("log")
+    };
+
+    let room = null;
+    let localStream = null;
+    let localTrack = null;
+    let audioContext = null;
+    let nameAction = null;
+    let talkAction = null;
+    let limitAction = null;
+    let joined = false;
+    let isTalking = false;
+    let incomingSide = "left";
+    let remoteTalkingCount = 0;
+
+    const peers = new Map();
+    const peerAudio = new Map();
+
+    function cleanRoomCode(value) {
+      return value
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9_-]/g, "-")
+        .replace(/-+/g, "-")
+        .slice(0, 32);
+    }
+
+    function safeName(value) {
+      return value.trim().replace(/\s+/g, " ").slice(0, 24);
+    }
+
+    function log(message) {
+      const time = new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      });
+
+      ui.log.textContent = `[${time}] ${message}\n${ui.log.textContent}`.slice(0, 7000);
+    }
+
+    function setConnectionStatus(text, online = false) {
+      ui.connectionPill.textContent = text;
+      ui.connectionPill.classList.toggle("online", online);
+    }
+
+    function ensureAudioContext() {
+      if (!audioContext) {
+        audioContext = new AudioContext({
+          latencyHint: "interactive"
+        });
+      }
+
+      if (audioContext.state === "suspended") {
+        audioContext.resume().catch(() => {});
+      }
+
+      return audioContext;
+    }
+
+    function updateChannelState() {
+      ui.channelState.classList.remove("busy", "talking");
+
+      if (isTalking) {
+        ui.channelState.textContent = "TRANSMITTING";
+        ui.channelState.classList.add("talking");
+        return;
+      }
+
+      if (remoteTalkingCount > 0) {
+        ui.channelState.textContent = "RIDER TALKING";
+        ui.channelState.classList.add("busy");
+        return;
+      }
+
+      ui.channelState.textContent = "CHANNEL READY";
+    }
+
+    function setMusicTalkLevel(active) {
+      const percent = Number(ui.talkMusicVolume.value) / 100;
+      ui.musicPlayer.volume = active ? percent : 1;
+    }
+
+    function getRiderTotal() {
+      return peers.size + 1;
+    }
+
+    function updateRiderCount() {
+      ui.riderCount.textContent = `${getRiderTotal()} / ${MAX_RIDERS} riders`;
+      ui.pttBtn.disabled = !joined || getRiderTotal() > MAX_RIDERS;
+    }
+
+    function createRiderRecord(peerId) {
+      if (!peers.has(peerId)) {
+        peers.set(peerId, {
+          name: `Rider ${peerId.slice(0, 5)}`,
+          talking: false
+        });
+      }
+      return peers.get(peerId);
+    }
+
+    function renderRiders() {
+      ui.riderList.replaceChildren();
+
+      const me = document.createElement("div");
+      me.className = "rider";
+      me.innerHTML = `
+        <div class="avatar">ME</div>
+        <div class="rider-info">
+          <div class="rider-name"></div>
+          <div class="rider-sub">This phone</div>
+        </div>
+        <div class="talk-dot ${isTalking ? "live" : ""}"></div>
+      `;
+      me.querySelector(".rider-name").textContent =
+        safeName(ui.riderName.value) || "You";
+      ui.riderList.appendChild(me);
+
+      for (const [peerId, rider] of peers.entries()) {
+        const row = document.createElement("div");
+        row.className = "rider";
+        row.innerHTML = `
+          <div class="avatar"></div>
+          <div class="rider-info">
+            <div class="rider-name"></div>
+            <div class="rider-sub">Connected • ${peerId.slice(0, 8)}</div>
+          </div>
+          <div class="talk-dot ${rider.talking ? "live" : ""}"></div>
+        `;
+
+        row.querySelector(".avatar").textContent =
+          (rider.name || "R").charAt(0).toUpperCase();
+        row.querySelector(".rider-name").textContent = rider.name;
+        ui.riderList.appendChild(row);
+      }
+
+      updateRiderCount();
+    }
+
+    function updatePan() {
+      const panValue = incomingSide === "left" ? -1 : 1;
+
+      for (const audio of peerAudio.values()) {
+        audio.panner.pan.value = panValue;
+      }
+
+      ui.leftBtn.classList.toggle("selected", incomingSide === "left");
+      ui.rightBtn.classList.toggle("selected", incomingSide === "right");
+      localStorage.setItem("ridetalkSide", incomingSide);
+    }
+
+    function updateVoiceVolume() {
+      const value = Number(ui.voiceVolume.value);
+      ui.voiceVolumeValue.textContent = `${value}%`;
+
+      for (const audio of peerAudio.values()) {
+        audio.gain.gain.value = value / 100;
+      }
+
+      localStorage.setItem("ridetalkVoiceVolume", String(value));
+    }
+
+    function updateTalkMusicVolume() {
+      const value = Number(ui.talkMusicVolume.value);
+      ui.talkMusicVolumeValue.textContent = `${value}%`;
+      setMusicTalkLevel(remoteTalkingCount > 0 || isTalking);
+      localStorage.setItem("ridetalkMusicDuringTalk", String(value));
+    }
+
+    function attachRemoteAudio(stream, peerId) {
+      const ctx = ensureAudioContext();
+
+      if (peerAudio.has(peerId)) {
+        const previous = peerAudio.get(peerId);
+        try { previous.source.disconnect(); } catch {}
+        try { previous.gain.disconnect(); } catch {}
+        try { previous.panner.disconnect(); } catch {}
+      }
+
+      const source = ctx.createMediaStreamSource(stream);
+      const gain = ctx.createGain();
+      const panner = ctx.createStereoPanner();
+      const compressor = ctx.createDynamicsCompressor();
+
+      gain.gain.value = Number(ui.voiceVolume.value) / 100;
+      panner.pan.value = incomingSide === "left" ? -1 : 1;
+
+      compressor.threshold.value = -28;
+      compressor.knee.value = 18;
+      compressor.ratio.value = 5;
+      compressor.attack.value = 0.004;
+      compressor.release.value = 0.18;
+
+      source.connect(gain);
+      gain.connect(panner);
+      panner.connect(compressor);
+      compressor.connect(ctx.destination);
+
+      peerAudio.set(peerId, {
+        source,
+        gain,
+        panner,
+        compressor,
+        stream
+      });
+
+      stream.getAudioTracks().forEach((track) => {
+        track.addEventListener("ended", () => removePeerAudio(peerId));
+      });
+
+      log(`Voice stream connected for ${peers.get(peerId)?.name || peerId.slice(0, 8)}.`);
+    }
+
+    function removePeerAudio(peerId) {
+      const audio = peerAudio.get(peerId);
+      if (!audio) return;
+
+      for (const node of [audio.source, audio.gain, audio.panner, audio.compressor]) {
+        try { node.disconnect(); } catch {}
+      }
+
+      peerAudio.delete(peerId);
+    }
+
+    async function startTalking(event) {
+      event?.preventDefault();
+
+      if (!joined || !localTrack || ui.pttBtn.disabled || isTalking) return;
+
+      ensureAudioContext();
+      isTalking = true;
+      localTrack.enabled = true;
+      ui.pttBtn.classList.add("active");
+      ui.pttBtn.textContent = "TALKING — RELEASE";
+      setMusicTalkLevel(true);
+      updateChannelState();
+      renderRiders();
+
+      try {
+        await talkAction?.send({
+          talking: true,
+          at: Date.now()
+        });
+      } catch (error) {
+        log(`Talk-state message warning: ${error.message}`);
+      }
+    }
+
+    async function stopTalking(event) {
+      event?.preventDefault();
+
+      if (!isTalking) return;
+
+      isTalking = false;
+      if (localTrack) localTrack.enabled = false;
+      ui.pttBtn.classList.remove("active");
+      ui.pttBtn.textContent = "HOLD TO TALK";
+      setMusicTalkLevel(remoteTalkingCount > 0);
+      updateChannelState();
+      renderRiders();
+
+      try {
+        await talkAction?.send({
+          talking: false,
+          at: Date.now()
+        });
+      } catch (error) {
+        log(`Talk-state message warning: ${error.message}`);
+      }
+    }
+
+    async function requestMicrophone() {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1
+        },
+        video: false
+      });
+
+      const track = stream.getAudioTracks()[0];
+      if (!track) throw new Error("No microphone was found.");
+
+      track.enabled = false;
+      return { stream, track };
+    }
+
+    async function joinGroup() {
+      if (joined) {
+        leaveGroup();
+        return;
+      }
+
+      const riderName = safeName(ui.riderName.value);
+      const roomCode = cleanRoomCode(ui.roomCode.value);
+      const password = ui.roomPassword.value;
+
+      ui.riderName.value = riderName;
+      ui.roomCode.value = roomCode;
+
+      if (!riderName) {
+        alert("Enter your rider name.");
+        ui.riderName.focus();
+        return;
+      }
+
+      if (roomCode.length < 3) {
+        alert("Enter a group code with at least 3 characters.");
+        ui.roomCode.focus();
+        return;
+      }
+
+      if (!window.isSecureContext) {
+        alert("Microphone access requires HTTPS. Upload this file to a secure web host.");
+        return;
+      }
+
+      ui.joinBtn.disabled = true;
+      ui.joinBtn.textContent = "CONNECTING...";
+      setConnectionStatus("CONNECTING");
+
+      try {
+        ensureAudioContext();
+
+        const microphone = await requestMicrophone();
+        localStream = microphone.stream;
+        localTrack = microphone.track;
+
+        room = joinRoom(
+          {
+            appId: APP_ID,
+            password: password || undefined
+          },
+          roomCode
+        );
+
+        nameAction = room.makeAction("rider-name");
+        talkAction = room.makeAction("talk-state");
+        limitAction = room.makeAction("room-limit");
+
+        room.onPeerJoin = async (peerId) => {
+          const rider = createRiderRecord(peerId);
+          renderRiders();
+          log(`${rider.name} connected.`);
+
+          if (getRiderTotal() > MAX_RIDERS) {
+            await limitAction.send(
+              { full: true, max: MAX_RIDERS },
+              { target: peerId }
+            ).catch(() => {});
+            return;
+          }
+
+          await Promise.allSettled([
+            nameAction.send(riderName, { target: peerId }),
+            talkAction.send({ talking: isTalking, at: Date.now() }, { target: peerId }),
+            room.addStream(localStream, {
+              target: peerId,
+              metadata: { type: "microphone", riderName }
+            })
+          ]);
+        };
+
+        room.onPeerLeave = (peerId) => {
+          const rider = peers.get(peerId);
+          if (rider?.talking) {
+            remoteTalkingCount = Math.max(0, remoteTalkingCount - 1);
+          }
+
+          log(`${rider?.name || "A rider"} disconnected.`);
+          removePeerAudio(peerId);
+          peers.delete(peerId);
+          setMusicTalkLevel(remoteTalkingCount > 0 || isTalking);
+          updateChannelState();
+          renderRiders();
+        };
+
+        room.onPeerStream = (stream, peerId) => {
+          createRiderRecord(peerId);
+          attachRemoteAudio(stream, peerId);
+          renderRiders();
+        };
+
+        nameAction.onMessage = (name, { peerId }) => {
+          const rider = createRiderRecord(peerId);
+          rider.name = safeName(String(name)) || rider.name;
+          renderRiders();
+        };
+
+        talkAction.onMessage = (data, { peerId }) => {
+          const rider = createRiderRecord(peerId);
+          const wasTalking = rider.talking;
+          rider.talking = Boolean(data?.talking);
+
+          if (!wasTalking && rider.talking) remoteTalkingCount += 1;
+          if (wasTalking && !rider.talking) {
+            remoteTalkingCount = Math.max(0, remoteTalkingCount - 1);
+          }
+
+          setMusicTalkLevel(remoteTalkingCount > 0 || isTalking);
+          updateChannelState();
+          renderRiders();
+        };
+
+        limitAction.onMessage = (data) => {
+          if (data?.full) {
+            alert(`This group already has ${data.max || MAX_RIDERS} riders.`);
+            leaveGroup();
+          }
+        };
+
+        await room.addStream(localStream, {
+          metadata: { type: "microphone", riderName }
+        });
+
+        joined = true;
+        localStorage.setItem("ridetalkName", riderName);
+        localStorage.setItem("ridetalkRoom", roomCode);
+
+        const url = new URL(location.href);
+        url.searchParams.set("room", roomCode);
+        history.replaceState({}, "", url);
+
+        ui.joinBtn.disabled = false;
+        ui.joinBtn.textContent = "DISCONNECT";
+        ui.joinBtn.classList.add("danger");
+        ui.talkCard.classList.remove("hidden");
+        ui.ridersCard.classList.remove("hidden");
+        ui.pttBtn.disabled = false;
+        setConnectionStatus("CONNECTED", true);
+        updateChannelState();
+        renderRiders();
+        refreshAudioOutputs();
+
+        log(`Connected to group ${roomCode}.`);
+      } catch (error) {
+        console.error(error);
+        log(`Connection failed: ${error.message}`);
+        alert(
+          "Could not connect. Check microphone permission, HTTPS, mobile data, and the group settings."
+        );
+        leaveGroup();
+      } finally {
+        ui.joinBtn.disabled = false;
+      }
+    }
+
+    function leaveGroup() {
+      stopTalking();
+
+      if (room) {
+        try { room.leave(); } catch {}
+      }
+
+      if (localStream) {
+        localStream.getTracks().forEach((track) => track.stop());
+      }
+
+      for (const peerId of peerAudio.keys()) {
+        removePeerAudio(peerId);
+      }
+
+      peers.clear();
+      room = null;
+      localStream = null;
+      localTrack = null;
+      nameAction = null;
+      talkAction = null;
+      limitAction = null;
+      joined = false;
+      isTalking = false;
+      remoteTalkingCount = 0;
+
+      ui.joinBtn.textContent = "CONNECT";
+      ui.joinBtn.classList.remove("danger");
+      ui.pttBtn.disabled = true;
+      ui.pttBtn.classList.remove("active");
+      ui.pttBtn.textContent = "HOLD TO TALK";
+      ui.talkCard.classList.add("hidden");
+      ui.ridersCard.classList.add("hidden");
+      setConnectionStatus("OFFLINE");
+      updateChannelState();
+      renderRiders();
+    }
+
+    async function refreshAudioOutputs() {
+      ui.audioOutput.replaceChildren(
+        new Option("Phone-selected output", "")
+      );
+
+      try {
+        if (!navigator.mediaDevices?.enumerateDevices) {
+          throw new Error("Device listing is not supported.");
+        }
+
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const outputs = devices.filter((device) => device.kind === "audiooutput");
+
+        outputs.forEach((device, index) => {
+          const label = device.label || `Audio output ${index + 1}`;
+          ui.audioOutput.add(new Option(label, device.deviceId));
+        });
+
+        if (!("setSinkId" in AudioContext.prototype)) {
+          ui.audioOutput.disabled = true;
+          ui.audioOutput.title =
+            "This browser uses Android's currently selected Bluetooth or phone output.";
+          log("Output selection is controlled by Android on this browser.");
+        } else {
+          ui.audioOutput.disabled = false;
+          log(`${outputs.length} selectable audio output(s) found.`);
+        }
+      } catch (error) {
+        ui.audioOutput.disabled = true;
+        log(`Audio output list unavailable: ${error.message}`);
+      }
+    }
+
+    async function selectAudioOutput() {
+      const ctx = ensureAudioContext();
+
+      if (!("setSinkId" in ctx)) {
+        alert(
+          "This Chrome version uses Android's current media output. Connect your Bluetooth headset in Android settings."
+        );
+        return;
+      }
+
+      try {
+        await ctx.setSinkId(ui.audioOutput.value);
+        log("Voice output device changed.");
+      } catch (error) {
+        log(`Could not change output: ${error.message}`);
+        alert("Android or Chrome did not allow that output device.");
+      }
+    }
+
+    async function testVoiceSide() {
+      const ctx = ensureAudioContext();
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const panner = ctx.createStereoPanner();
+
+      oscillator.type = "sine";
+      oscillator.frequency.value = 680;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.14, ctx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.42);
+      panner.pan.value = incomingSide === "left" ? -1 : 1;
+
+      oscillator.connect(gain);
+      gain.connect(panner);
+      panner.connect(ctx.destination);
+
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.45);
+
+      log(`Played ${incomingSide}-ear test tone.`);
+    }
+
+    async function copyInvite() {
+      const roomCode = cleanRoomCode(ui.roomCode.value);
+
+      if (!roomCode) {
+        alert("Enter a group code first.");
+        return;
+      }
+
+      const url = new URL(location.href);
+      url.searchParams.set("room", roomCode);
+
+      const invite =
+        `Join my RideTalk group.\n` +
+        `Group code: ${roomCode}\n` +
+        `${url.toString()}\n` +
+        `Use the group password I send separately.`;
+
+      try {
+        await navigator.clipboard.writeText(invite);
+        ui.copyInviteBtn.textContent = "COPIED";
+        setTimeout(() => (ui.copyInviteBtn.textContent = "COPY INVITE"), 1300);
+      } catch {
+        prompt("Copy this invite:", invite);
+      }
+    }
+
+    function loadSavedSettings() {
+      const queryRoom = new URL(location.href).searchParams.get("room");
+      const savedRoom = localStorage.getItem("ridetalkRoom");
+      const savedName = localStorage.getItem("ridetalkName");
+      const savedSide = localStorage.getItem("ridetalkSide");
+      const savedVoiceVolume = localStorage.getItem("ridetalkVoiceVolume");
+      const savedMusicVolume = localStorage.getItem("ridetalkMusicDuringTalk");
+
+      ui.roomCode.value = cleanRoomCode(queryRoom || savedRoom || "");
+      ui.riderName.value = safeName(savedName || "");
+      incomingSide = savedSide === "right" ? "right" : "left";
+
+      if (savedVoiceVolume !== null) {
+        ui.voiceVolume.value = savedVoiceVolume;
+      }
+
+      if (savedMusicVolume !== null) {
+        ui.talkMusicVolume.value = savedMusicVolume;
+      }
+
+      updatePan();
+      updateVoiceVolume();
+      updateTalkMusicVolume();
+      renderRiders();
+    }
+
+    ui.joinBtn.addEventListener("click", joinGroup);
+    ui.copyInviteBtn.addEventListener("click", copyInvite);
+
+    ui.leftBtn.addEventListener("click", () => {
+      incomingSide = "left";
+      updatePan();
+    });
+
+    ui.rightBtn.addEventListener("click", () => {
+      incomingSide = "right";
+      updatePan();
+    });
+
+    ui.voiceVolume.addEventListener("input", updateVoiceVolume);
+    ui.talkMusicVolume.addEventListener("input", updateTalkMusicVolume);
+    ui.refreshDevicesBtn.addEventListener("click", refreshAudioOutputs);
+    ui.audioOutput.addEventListener("change", selectAudioOutput);
+    ui.testSideBtn.addEventListener("click", testVoiceSide);
+
+    ui.musicFile.addEventListener("change", () => {
+      const file = ui.musicFile.files?.[0];
+      if (!file) return;
+
+      if (ui.musicPlayer.src.startsWith("blob:")) {
+        URL.revokeObjectURL(ui.musicPlayer.src);
+      }
+
+      ui.musicPlayer.src = URL.createObjectURL(file);
+      ui.musicPlayer.play().catch(() => {});
+      log(`Music loaded: ${file.name}`);
+    });
+
+    ui.roomCode.addEventListener("input", () => {
+      const start = ui.roomCode.selectionStart;
+      ui.roomCode.value = cleanRoomCode(ui.roomCode.value);
+      try { ui.roomCode.setSelectionRange(start, start); } catch {}
+    });
+
+    for (const eventName of ["pointerdown", "touchstart"]) {
+      ui.pttBtn.addEventListener(eventName, startTalking, { passive: false });
+    }
+
+    for (const eventName of [
+      "pointerup",
+      "pointercancel",
+      "pointerleave",
+      "touchend",
+      "touchcancel"
+    ]) {
+      ui.pttBtn.addEventListener(eventName, stopTalking, { passive: false });
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) stopTalking();
+    });
+
+    window.addEventListener("pagehide", leaveGroup);
+    window.addEventListener("beforeunload", leaveGroup);
+
+    loadSavedSettings();
+    refreshAudioOutputs();
+
+    if (!window.isSecureContext) {
+      log("Warning: this page is not using HTTPS, so the microphone may be blocked.");
+    }
+  </script>
+</body>
+</html>
