@@ -1,0 +1,37 @@
+name: RideTalk Construction Bot update
+description: Ask the GitHub Construction Bot to propose a tested RideTalk change
+title: "[Construction Bot] "
+labels: []
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The bot will edit `index.html` on a separate branch, run checks, and open a pull request. It will never merge automatically.
+
+  - type: textarea
+    id: request
+    attributes:
+      label: Describe the update
+      description: Explain what should change and what should stay the same.
+      placeholder: Add a button that...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      description: Describe what should happen after the update.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: approval
+    attributes:
+      label: Safety and approval
+      options:
+        - label: I understand the bot creates a pull request and does not merge automatically.
+          required: true
+        - label: I will review the Files changed and Checks tabs before merging.
+          required: true
