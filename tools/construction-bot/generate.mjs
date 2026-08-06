@@ -1,102 +1,184 @@
 import fs from 'node:fs';
+import { spawnSync } from 'node:child_process';
 
-const token = process.env.GITHUB_TOKEN;
-const model = process.env.MODEL_ID || 'openai/gpt-4.1';
+const requestPath = '.construction-bot/request.txt';
+const planPath = '.construction-bot/plan.json';
+const indexPath = 'index.html';
 
-if (!token) throw new Error('GITHUB_TOKEN is missing.');
+if (!process.env.GITHUB_TOKEN) {
+  throw new Error(
+    'GITHUB_TOKEN is missing. Confirm the workflow grants copilot-requests: write.',
+  );
+}
 
-const request = fs.readFileSync('.construction-bot/request.txt', 'utf8');
-const original = fs.readFileSync('index.html', 'utf8');
+if (!fs.existsSync(requestPath)) {
+  throw new Error(`${requestPath} was not created by request.mjs.`);
+}
 
-const system = `You are the RideTalk Construction Bot. You modify one public GitHub Pages file: index.html.
-Return JSON only with this exact shape:
+if (!fs.existsSync(indexPath)) {
+  throw new Error('index.html was not found. The filename must use a lowercase i.');
+}
+
+fs.mkdirSync('.construction-bot', { recursive: true });
+fs.rmSync(planPath, { force: true });
+
+const prompt = `
+You are the RideTalk Construction Bot running inside a reviewed GitHub Actions job.
+
+Read these two files:
+1. ${requestPath}
+2. ${indexPath}
+
+Create exactly one file:
+${planPath}
+
+Do not edit index.html or any other repository file.
+
+The plan file must be valid JSON with exactly this shape:
 {
   "summary": "short summary",
   "operations": [
-    {"find": "exact existing text", "replace": "replacement text", "expectedMatches": 1}
+    {
+      "find": "exact existing text copied from index.html",
+      "replace": "replacement text",
+      "expectedMatches": 1
+    }
   ],
   "manualChecks": ["short check"]
 }
 
-Rules:
-- Make the smallest change that fulfills the request.
+Safety and quality rules:
+- Make the smallest change that fulfills the approved request.
 - Preserve all unrelated RideTalk features.
-- Each find value must be copied exactly from the supplied current index.html.
-- Use at most 24 operations.
-- Each operation must have find, replace, and expectedMatches.
-- expectedMatches must be 1 unless repeating an identical safe change is necessary.
-- Do not add credentials, API keys, access tokens, passwords, analytics, tracking, remote-control behavior, hidden downloads, eval, new Function, document.write, or obfuscated code.
-- Do not weaken microphone, camera, location, notification, GitHub, email, file, or browser permission requirements.
-- Do not auto-merge, self-modify the GitHub repository from the public page, or expose GITHUB_TOKEN.
-- Do not remove the Repair Bot, Moderator Bot, diagnostics, rollback safety, or user approval controls unless explicitly requested.
-- Keep mobile Android Chrome usability.
-- If the request is unsafe, impossible in a static page, or cannot be expressed as exact replacements, return an empty operations array and explain why in summary.`;
+- Every find value must be copied exactly from the current index.html.
+- Prefer unique exact replacements with expectedMatches set to 1.
+- Use no more than 24 operations.
+- Do not add credentials, tokens, passwords, analytics, tracking, hidden downloads,
+  remote control, eval, new Function, document.write, or obfuscated code.
+- Do not weaken microphone, camera, location, notification, email, file, GitHub,
+  or browser permission requirements.
+- Do not auto-merge or publish directly to main.
+- Do not remove diagnostics, Repair Bot, Moderator Bot, rollback safety, or approval
+  controls unless the request explicitly asks for that removal.
+- Keep Android Chrome and mobile layouts working.
+- If the request cannot be completed safely with exact replacements, create a plan
+  with an empty operations array and explain the reason in summary.
+- Write JSON only to ${planPath}.
+`.trim();
 
-const response = await fetch('https://models.github.ai/inference/chat/completions', {
-  method: 'POST',
-  headers: {
-    Accept: 'application/vnd.github+json',
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
-    'X-GitHub-Api-Version': '2026-03-10',
+const result = spawnSync(
+  'copilot',
+  [
+    '-p',
+    prompt,
+    '--allow-tool=read,write(.construction-bot/plan.json)',
+    '--deny-tool=shell,url,memory',
+    '--no-ask-user',
+  ],
+  {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      GITHUB_TOKEN: process.env.GITHUB_TOKEN,
+      COPILOT_AUTO_UPDATE: 'false',
+    },
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    timeout: 15 * 60 * 1000,
+    maxBuffer: 10 * 1024 * 1024,
   },
-  body: JSON.stringify({
-    model,
-    temperature: 0.1,
-    max_tokens: 24_000,
-    response_format: { type: 'json_object' },
-    messages: [
-      { role: 'system', content: system },
-      {
-        role: 'user',
-        content: `REQUEST:\n${request}\n\nCURRENT index.html:\n${original}`,
-      },
-    ],
-  }),
-});
+);
 
-if (!response.ok) {
-  const body = await response.text();
-  throw new Error(`GitHub Models request failed (${response.status}): ${body.slice(0, 2000)}`);
+if (result.error) {
+  throw new Error(`GitHub Copilot CLI could not start: ${result.error.message}`);
 }
 
-const payload = await response.json();
-const content = payload?.choices?.[0]?.message?.content;
-if (!content) throw new Error('GitHub Models returned no plan.');
+if (result.stdout) process.stdout.write(result.stdout);
+if (result.stderr) process.stderr.write(result.stderr);
+
+if (result.status !== 0) {
+  throw new Error(
+    `GitHub Copilot CLI failed with exit code ${result.status}. ` +
+    'Confirm that Copilot is available for the account and that Copilot CLI ' +
+    'requests are allowed for this repository.',
+  );
+}
+
+if (!fs.existsSync(planPath)) {
+  throw new Error(
+    `GitHub Copilot finished without creating ${planPath}.`,
+  );
+}
 
 let plan;
 try {
-  plan = JSON.parse(content);
-} catch {
-  const cleaned = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-  plan = JSON.parse(cleaned);
+  plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
+} catch (error) {
+  throw new Error(`Copilot created invalid JSON: ${error.message}`);
 }
 
-if (!plan || typeof plan !== 'object' || !Array.isArray(plan.operations)) {
-  throw new Error('The generated plan is not valid JSON.');
+if (!plan || typeof plan !== 'object' || Array.isArray(plan)) {
+  throw new Error('The Copilot plan must be a JSON object.');
 }
+
+if (typeof plan.summary !== 'string' || !plan.summary.trim()) {
+  throw new Error('The Copilot plan has no summary.');
+}
+
+if (!Array.isArray(plan.operations)) {
+  throw new Error('The Copilot plan has no operations array.');
+}
+
 if (plan.operations.length === 0) {
-  throw new Error(`The bot could not create a safe exact-replacement plan: ${plan.summary || 'No explanation supplied.'}`);
+  throw new Error(
+    `Copilot could not create a safe exact-replacement plan: ${plan.summary}`,
+  );
 }
+
 if (plan.operations.length > 24) {
-  throw new Error('The generated plan has more than 24 operations.');
+  throw new Error('The Copilot plan contains more than 24 operations.');
 }
 
 for (const [index, operation] of plan.operations.entries()) {
-  if (typeof operation.find !== 'string' || !operation.find) {
+  if (!operation || typeof operation !== 'object') {
+    throw new Error(`Operation ${index + 1} is not an object.`);
+  }
+
+  if (typeof operation.find !== 'string' || operation.find.length === 0) {
     throw new Error(`Operation ${index + 1} has no exact find text.`);
   }
+
   if (typeof operation.replace !== 'string') {
     throw new Error(`Operation ${index + 1} has no replacement text.`);
   }
-  operation.expectedMatches = Number(operation.expectedMatches || 1);
-  if (!Number.isInteger(operation.expectedMatches) || operation.expectedMatches < 1 || operation.expectedMatches > 10) {
-    throw new Error(`Operation ${index + 1} has an invalid expectedMatches value.`);
+
+  const expectedMatches = Number(operation.expectedMatches ?? 1);
+  if (
+    !Number.isInteger(expectedMatches) ||
+    expectedMatches < 1 ||
+    expectedMatches > 10
+  ) {
+    throw new Error(
+      `Operation ${index + 1} has an invalid expectedMatches value.`,
+    );
   }
+
+  operation.expectedMatches = expectedMatches;
+
   if (operation.find.length > 80_000 || operation.replace.length > 80_000) {
     throw new Error(`Operation ${index + 1} is too large.`);
   }
 }
 
-fs.writeFileSync('.construction-bot/plan.json', JSON.stringify(plan, null, 2), 'utf8');
-console.log(`Generated ${plan.operations.length} exact replacement operation(s).`);
+if (!Array.isArray(plan.manualChecks)) {
+  plan.manualChecks = [];
+}
+
+plan.manualChecks = plan.manualChecks
+  .filter((item) => typeof item === 'string' && item.trim())
+  .slice(0, 20);
+
+fs.writeFileSync(planPath, JSON.stringify(plan, null, 2), 'utf8');
+console.log(
+  `GitHub Copilot generated ${plan.operations.length} exact replacement operation(s).`,
+);
