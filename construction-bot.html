@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <title>RideTalk Construction Bot</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background:#07111f; color:#f4f7fb; }
+    * { box-sizing:border-box; }
+    body { margin:0; padding:16px; background:linear-gradient(180deg,#07111f,#101a2d); min-height:100vh; }
+    main { max-width:720px; margin:auto; }
+    .card { padding:16px; margin-bottom:14px; border:1px solid #2b3b55; border-radius:18px; background:#111b2c; box-shadow:0 12px 30px rgba(0,0,0,.28); }
+    h1,h2 { margin:0 0 10px; }
+    p { color:#b8c4d5; line-height:1.5; }
+    label { display:block; margin:12px 0 6px; font-weight:800; }
+    input,textarea { width:100%; padding:12px; border:1px solid #354864; border-radius:12px; color:#fff; background:#091321; font:inherit; }
+    textarea { min-height:170px; resize:vertical; }
+    button,a.action { display:inline-flex; min-height:46px; align-items:center; justify-content:center; margin:8px 6px 0 0; padding:10px 14px; border:0; border-radius:12px; color:#07111f; background:#45e08a; font-weight:900; text-decoration:none; }
+    a.secondary { color:#f4f7fb; background:#25344c; }
+    .warning { padding:10px 12px; border-left:4px solid #ffc857; border-radius:10px; background:#1a2231; color:#e8edf5; }
+    code { overflow-wrap:anywhere; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <h1>👷 RideTalk Construction Bot</h1>
+      <p>Describe an update. GitHub Actions will ask GitHub Models for a small exact patch, validate <code>index.html</code>, and create a pull request. It never merges automatically.</p>
+      <label for="title">Update name</label>
+      <input id="title" maxlength="90" placeholder="Example: Improve the friends list">
+      <label for="request">Describe exactly what should change</label>
+      <textarea id="request" placeholder="Add..., keep..., do not remove..."></textarea>
+      <button id="createRequest" type="button">CREATE SECURE UPDATE REQUEST</button>
+      <a class="action secondary" href="https://github.com/dragonslayer666420666-lang/RideTalk/pulls" target="_blank" rel="noopener">OPEN PULL REQUESTS</a>
+      <a class="action secondary" href="https://github.com/dragonslayer666420666-lang/RideTalk/actions" target="_blank" rel="noopener">OPEN ACTIONS / ROLLBACK</a>
+    </section>
+    <section class="card">
+      <h2>Approval steps</h2>
+      <p>1. Submit the GitHub issue. 2. Wait for the Construction Bot check. 3. Open its pull request. 4. Review Files changed and Checks. 5. Merge only when it looks right.</p>
+      <div class="warning">Never paste passwords, API keys, GitHub tokens, private messages, or personal information into an update request.</div>
+    </section>
+  </main>
+  <script>
+    const repo = 'https://github.com/dragonslayer666420666-lang/RideTalk';
+    document.getElementById('createRequest').addEventListener('click', () => {
+      const name = document.getElementById('title').value.trim() || 'RideTalk update';
+      const request = document.getElementById('request').value.trim();
+      if (!request) { alert('Describe the update first.'); return; }
+      const title = `[Construction Bot] ${name}`;
+      const body = `## Describe the update\n\n${request}\n\n## Expected result\n\nThe requested change works without removing unrelated RideTalk features.\n\n## Safety and approval\n\n- [x] Create a pull request; do not merge automatically.\n- [x] Run syntax, ID, UI-reference, and secret checks.\n- [x] Keep browser permission prompts and user approval.\n`;
+      location.href = `${repo}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+    });
+  </script>
+</body>
+</html>
