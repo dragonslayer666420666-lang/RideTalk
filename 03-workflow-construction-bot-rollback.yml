@@ -1,0 +1,56 @@
+name: RideTalk Construction Bot Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      pull_request_number:
+        description: Merged Construction Bot pull-request number to undo
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-rollback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out RideTalk
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Revert the selected merged pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ inputs.pull_request_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          merge_sha=$(gh pr view "$PR_NUMBER" --json state,mergedAt,mergeCommit --jq '.mergeCommit.oid')
+          if [[ -z "$merge_sha" || "$merge_sha" == "null" ]]; then
+            echo "Pull request #$PR_NUMBER does not have a merge commit to revert."
+            exit 1
+          fi
+
+          branch="construction-bot/rollback-pr-${PR_NUMBER}-${GITHUB_RUN_ID}"
+          git config user.name "RideTalk Construction Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git revert --no-edit "$merge_sha"
+          node tools/construction-bot/validate.mjs index.html
+          git push --set-upstream origin "$branch"
+
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "Rollback Construction Bot PR #$PR_NUMBER" \
+            --body "This pull request safely reverts merged Construction Bot pull request #$PR_NUMBER. Review the checks, then merge to restore the previous RideTalk version."
