@@ -89,7 +89,5 @@ jobs:
           echo "Created $pr_url"
 
           if [[ "$EVENT_NAME" == "issues" && -n "${ISSUE_NUMBER:-}" ]]; then
-            gh issue comment "$ISSUE_NUMBER" --body "The Construction Bot created a tested pull request for your approval: $pr_url
-
-Nothing was merged automatically. Review the Files changed and Checks tabs before merging."
+            gh issue comment "$ISSUE_NUMBER" --body "The Construction Bot created a tested pull request for your approval: $pr_url"$'\n\n'"Nothing was merged automatically. Review the Files changed and Checks tabs before merging."
           fi
